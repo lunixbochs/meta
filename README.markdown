@@ -1,7 +1,11 @@
-permute.py
+meta
 ==========
-creates permutations of text based on chains
+contains two vague categories of code: utilities and snippets
 
-intended to find combinations of a word, taking into account upper+lowercase and similar-looking characters like 'i', '1', 'l', '!'
+* __utilities__: clever single-file solutions
+  * tvsort: tries to automatically sort tv shows into an existing folder structure
+  * permute: builds chains of similar characters and permutes possible combinations.
 
-accepts multiple words via either newline-separated stdin and regular command-line arguments
+* __snippets__: batteries not included
+  * python
+     * threadpool: decorator capable of transparently threading calls to one or more functions, with the ability to store the return values for consumption.
