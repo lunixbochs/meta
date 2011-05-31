@@ -105,9 +105,8 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run):
 				return
 	print 
 	print ('%s S%02dE%02d => %s' % (name, season, episode, target)),
-	container = os.path.split(target)[0]
-	if not os.path.exists(container) and not dry_run:
-		os.makedirs(container)
+	if not os.path.exists(target_path) and not dry_run:
+		os.makedirs(target_path)
 
 	path = os.path.join(path, filename)
 	if os.path.isdir(path) and not dry_run:
