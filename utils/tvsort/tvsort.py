@@ -96,6 +96,9 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run):
 		print 'Skipped "%s" (example: %s)' % (name, filename)
 		return True
 
+	if not os.path.exists(target_path) and not dry_run:
+		os.makedirs(target_path)
+
 	if target_path == path:
 		if target_filename == filename:
 			return
@@ -105,8 +108,6 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run):
 				return
 	print 
 	print ('%s S%02dE%02d => %s' % (name, season, episode, target)),
-	if not os.path.exists(target_path) and not dry_run:
-		os.makedirs(target_path)
 
 	path = os.path.join(path, filename)
 	if os.path.isdir(path) and not dry_run:
