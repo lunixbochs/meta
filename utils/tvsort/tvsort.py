@@ -215,4 +215,4 @@ if __name__ == '__main__':
 	if len(args) < 2:
 		usage()
 	else:
-		run(args[0], args[1:], force_move=move, dry_run=dry_run)
+		run(args[0], args[1:], force_move=force_move, dry_run=dry_run)
