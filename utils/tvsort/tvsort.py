@@ -11,6 +11,7 @@ import xmlrpclib
 words = r'([\w\.\- ]+?)'
 spacers = re.compile(r'[\s_\-\.]+')
 show_filename = re.compile(words + r'S?(\d+)[xE](\d+)', re.IGNORECASE)
+fallback_filename = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
 word_match = re.compile('(%s+)' % words, re.IGNORECASE)
 the_match = re.compile(r'(.*?)(, The)$', re.IGNORECASE)
 
@@ -167,6 +168,12 @@ def run(source, targets, force_move=False, dry_run=False):
 	for path in sorted(files):
 		path, filename = os.path.split(path)
 		match = show_filename.match(filename)
+
+                secondary = fallback_filename.match(filename)
+
+                if not match and secondary:
+                        match = secondary
+
 		if match:
 			name, season, episode = match.groups()
 
