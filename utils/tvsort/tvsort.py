@@ -14,9 +14,12 @@ show_filename = re.compile(words + r'S?(\d+)[xE](\d+)', re.IGNORECASE)
 fallback_filename = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
 word_match = re.compile('(%s+)' % words, re.IGNORECASE)
 the_match = re.compile(r'(.*?)(, The)$', re.IGNORECASE)
+hd_match = re.compile(r'(720p|1080p)')
 
 date = r'(19\d{2}|2\d{3})'
 date_match = re.compile(r' ?(\(%s\)|%s) ?' % (date, date))
+
+extensions = ('.mp4', '.avi', '.mkv', '.wmv', '.mpg', '.mpeg')
 
 def forward_the(name):
 	if the_match.match(name):
@@ -62,10 +65,13 @@ class Folder:
 
 		return False
 	
-	def rename(self, name, season, episode, ext='.avi'):
+	def rename(self, name, season, episode, hd=None, ext='.avi'):
 		epstr = 'S%02dE%02d' % (season, episode)
-		target = self.naming % {'name':name, 'season':season, 'episode':episode, 'epstr':epstr} + ext
-		return self.path, target
+		target = self.naming % {'name':name, 'season':season, 'episode':episode, 'epstr':epstr}
+		if hd:
+			target = '%s (%s)' % (target, hd)
+
+		return self.path, target + ext
 	
 	def __repr__(self):
 		return '<Folder "%s">' % self.name
@@ -80,42 +86,51 @@ def extract(path):
 	
 	second = os.listdir(path)
 	for entry in second:
-		if entry.endswith('.avi'):
+		ext = os.path.splitext(entry)[1]
+		if ext in extensions:
 			print '=> "%s"' % entry
-			return entry
+			return entry, ext
 	else:
 		print '- Nothing found :('
+		return None, None
 
-def move(path, filename, name, season, episode, folders, force_move, dry_run):
+def move(path, filename, name, season, episode, folders, force_move, dry_run, hd=None, ext='.avi'):
 	copy = True
+
 	for folder in folders:
 		if folder.match(name):
-			target_folder, target = folder.rename(name, season, episode)
-			target_path, target_filename = os.path.split(os.path.join(target_folder, target))
 			break
 	else:
 		print 'Skipped "%s" (example: %s)' % (name, filename)
 		return True
 
-	if not os.path.exists(target_path) and not dry_run:
-		os.makedirs(target_path)
+	target_folder, target = folder.rename(name, season, episode, hd, ext)
 
-	if target_path == path:
-		if target_filename == filename:
-			return
-	else:
-		for existing in os.listdir(target_path):
-			if existing.lower() == target_filename.lower():
-				return
-	print 
-	print ('%s S%02dE%02d => %s' % (name, season, episode, target)),
+	no_ext = os.path.splitext(os.path.join(target_folder, target))[0]
+	test_base = os.path.split(no_ext)[0]
+	for test in extensions:
+		test_path = no_ext + test
+		test_filename = os.path.split(test_path)[1]
+
+		if not os.path.exists(test_base):
+			if not dry_run:
+				os.makedirs(test_base)
+
+			break
+		else:
+			if test_base == path:
+				if test_filename == filename:
+					return
+			else:
+				for existing in os.listdir(test_base):
+					if existing.lower() == test_filename.lower():
+						return
 
 	path = os.path.join(path, filename)
 	if os.path.isdir(path) and not dry_run:
 		cwd = os.getcwd()
 		os.chdir(path)
-		print 'extracting archive',
-		entry = extract(path)
+		entry, ext = extract(path)
 		os.chdir(cwd)
 		if not entry:
 			print 'no extracted file found.'
@@ -125,6 +140,12 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run):
 
 		path = os.path.join(path, entry)
 		copy = False
+
+	target_folder, target = folder.rename(name, season, episode, hd, ext)
+	target_path, target_filename = os.path.split(os.path.join(target_folder, target))
+
+	print 
+	print ('%s S%02dE%02d => %s' % (name, season, episode, target)),
 
 	target = os.path.join(target_folder, target)
 	if dry_run:
@@ -139,7 +160,7 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run):
 			os.rename(path, target)
 			print 'moved to target.'
 
-def run(source, targets, force_move=False, dry_run=False):
+def run(source, targets, force_move=False, dry_run=False, hd=None):
 	print
 	print 'If anything is skipped, make sure the show name exists as a folder in one of the targets'
 	print 'You can also use .auto files (see the readme) to change the show matching a folder'
@@ -168,11 +189,12 @@ def run(source, targets, force_move=False, dry_run=False):
 	for path in sorted(files):
 		path, filename = os.path.split(path)
 		match = show_filename.match(filename)
+		secondary = fallback_filename.match(filename)
+		hd = hd_match.search(filename)
+		if hd: hd = hd.group()
 
-                secondary = fallback_filename.match(filename)
-
-                if not match and secondary:
-                        match = secondary
+		if not match and secondary:
+			match = secondary
 
 		if match:
 			name, season, episode = match.groups()
@@ -188,7 +210,7 @@ def run(source, targets, force_move=False, dry_run=False):
 
 			if name in skip: continue
 			
-			skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run)
+			skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run, hd)
 			if skip_name:
 				skip.add(name)
 
@@ -223,3 +245,4 @@ if __name__ == '__main__':
 		usage()
 	else:
 		run(args[0], args[1:], force_move=force_move, dry_run=dry_run)
+
