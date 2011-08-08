@@ -94,7 +94,7 @@ def extract(path):
 		print '- Nothing found :('
 		return None, None
 
-def move(path, filename, name, season, episode, folders, force_move, dry_run, hd=None, ext='.avi'):
+def move(path, filename, name, season, episode, folders, force_move=False, dry_run=False, link=False, hd=None, ext='.avi'):
 	copy = True
 
 	for folder in folders:
@@ -154,13 +154,21 @@ def move(path, filename, name, season, episode, folders, force_move, dry_run, hd
 		print 'Would %s %s => %s' % (verb, path, target)
 	else:
 		if copy and not force_move:
-			shutil.copyfile(path, target)
-			print 'copied to target.'
+			if link:
+				try:
+					os.link(path, target)
+					print 'linked to target'
+				except IOError:
+					link = False
+			
+			if not link:
+				shutil.copyfile(path, target)
+				print 'copied to target.'
 		else:
 			os.rename(path, target)
 			print 'moved to target.'
 
-def run(source, targets, force_move=False, dry_run=False, hd=None):
+def run(source, targets, force_move=False, dry_run=False, link=False):
 	print
 	print 'If anything is skipped, make sure the show name exists as a folder in one of the targets'
 	print 'You can also use .auto files (see the readme) to change the show matching a folder'
@@ -210,7 +218,7 @@ def run(source, targets, force_move=False, dry_run=False, hd=None):
 
 			if name in skip: continue
 			
-			skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run, hd)
+			skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run, link, hd)
 			if skip_name:
 				skip.add(name)
 
@@ -219,6 +227,7 @@ def usage():
 	print 'Sorts TV shows into folders.'
 	print '  Flags:'
 	print '    -m, --move: force moving of normal files (extracted files are always moved)'
+	print '    -l, --link: hardlink files instead of copying'
 	print '    -d, --dry: dry run - only display what would be moved/copied'
 	print '  Source options:'
 	print '    * /path/to/folder'
@@ -231,18 +240,28 @@ if __name__ == '__main__':
 	args = []
 	force_move = False
 	dry_run = False
+	link = False
 	for arg in sys.argv[1:]:
+		sort = None
+		if arg.startswith('-'):
+			sort = ''.join(sorted(arg))
+
 		if arg in ('-m', '--move'):
 			force_move = True
 		elif arg in ('-d', '--dry'):
 			dry_run = True
-		elif arg in ('-md', '-dm'):
-			force_move, dry_run = True, True
+		elif arg in ('-l', '--link'):
+			link = True
+		elif sort:
+			if re.match(r'-[mdv]{1,3}', sort):
+				if 'm' in sort: force_move = True
+				if 'd' in sort: dry_run = True
+				if 'l' in sort: link = True
 		else:
 			args.append(arg)
 
 	if len(args) < 2:
 		usage()
 	else:
-		run(args[0], args[1:], force_move=force_move, dry_run=dry_run)
+		run(args[0], args[1:], force_move=force_move, dry_run=dry_run, link=link)
 
