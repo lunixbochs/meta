@@ -9,6 +9,7 @@ contains two vague categories of code: utilities and snippets
 
 * __snippets__: batteries not included
   * python
+     * netreg: wrapper around samba's remote registry access
      * singleton: metaclass implementing Singleton classes
      * tailcall: decorator allowing tail recursion without hitting python's max recursion depth
      * threadpool: decorator capable of transparently threading calls to one or more functions, with the ability to store the return values for consumption.
