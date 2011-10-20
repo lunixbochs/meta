@@ -16,6 +16,7 @@ def tail(func):
 					args, kwargs = stack.pop()
 					value = func(*args, **kwargs)
 			
+				del stacks[tid]
 				return value
 			except OverflowError:
 				raise OverflowError, 'tail call, recursion depth %i' % count
