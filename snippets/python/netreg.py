@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 
 import os
-try:
-	from tailcall import tail
-except ImportError:
-	tail = lambda x: x
 
 class Registry:
 	def __init__(self, host, username, password):
@@ -61,7 +57,6 @@ class Registry:
 		lines = self.call('deletevalue', key, name)
 		return lines
 
-	@tail
 	def walk(self, base):
 		tree = {}
 		keys = self.enum(base)
