@@ -95,7 +95,7 @@ class ThreadPool:
 	def __init__(self, max_threads, log_returns=False, catch_returns=False, logger=None, stack_size=0):
 		self.lock = threading.Lock()
 		self.max = max_threads
-		self.logger = logger
+		self.logger = logger or (lambda *x: None)
 		self.stack_size = stack_size
 		self.log_returns = log_returns
 		self.catch_returns = catch_returns
