@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import os
 
 class Registry:
@@ -37,6 +35,8 @@ class Registry:
 			if typ == 'Keyname':
 				key = value
 			elif typ == 'Valuename':
+				if value == '':
+					value = '@'
 				key = value
 			
 			cur[typ] = value
