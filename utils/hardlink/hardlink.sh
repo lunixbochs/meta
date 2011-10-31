@@ -75,11 +75,12 @@ function check {
 
 # <path>
 function scan {
-	for file in $(find "$1" -type f); do
+	while IFS= read -r -d $'\0' file; do
 		check "$file"
-	done
+	done < <(find "$1" -type f -print0)
 }
 
-# remove duplicates
-scan "$(echo "$@" | tr ' ' '\n' | uniq | xargs)"
+while read path; do
+        scan "$path"
+done < <(echo "$@" | tr ' ' '\n' | uniq | xargs) # skip duplicate paths
 
