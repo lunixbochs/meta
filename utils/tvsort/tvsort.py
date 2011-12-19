@@ -185,10 +185,11 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
 	if source.startswith('rtorrent://'):
 		rtorrent_uri = source.replace('rtorrent', 'http')
 		x = xmlrpclib.ServerProxy(rtorrent_uri)
-		seeding = x.download_list('seeding')
+		seeding = x.download_list()
 
 		for torrent in seeding:
-			files.add(x.d.get_base_path(torrent))
+			if x.d.complete(torrent):
+				files.add(x.d.get_base_path(torrent))
 	else:
 		for filename in os.listdir(source):
 			files.add(os.path.join(source, filename))
