@@ -10,8 +10,9 @@ import xmlrpclib
 
 words = r'([\w\.\- ]+?)'
 spacers = re.compile(r'[\s_\-\.]+')
-show_filename = re.compile(words + r'S?(\d+)[xE](\d+)', re.IGNORECASE)
-fallback_filename = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
+show_filename = re.compile(words + r'S(\d+)E(\d+)', re.IGNORECASE)
+show_filename_2 = re.compile(words + r'(\d+)x(\d+)', re.IGNORECASE)
+show_filename_3 = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
 word_match = re.compile('(%s+)' % words, re.IGNORECASE)
 the_match = re.compile(r'(.*?)(, The)$', re.IGNORECASE)
 hd_match = re.compile(r'(720p|1080p)')
@@ -19,7 +20,7 @@ hd_match = re.compile(r'(720p|1080p)')
 date = r'(19\d{2}|2\d{3})'
 date_match = re.compile(r' ?(\(%s\)|%s) ?' % (date, date))
 
-extensions = ('.mp4', '.avi', '.mkv', '.wmv', '.mpg', '.mpeg')
+extensions = ('.mp4', '.avi', '.mkv', '.m4v', '.wmv', '.mpg', '.mpeg')
 
 def forward_the(name):
 	if the_match.match(name):
@@ -188,8 +189,8 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
 		seeding = x.download_list()
 
 		for torrent in seeding:
-			if x.d.complete(torrent):
-				files.add(x.d.get_base_path(torrent))
+			if not x.d.complete(torrent): continue
+			files.add(x.d.get_base_path(torrent))
 	else:
 		for filename in os.listdir(source):
 			files.add(os.path.join(source, filename))
@@ -197,15 +198,19 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
 	skip = set()
 	for path in sorted(files):
 		path, filename = os.path.split(path)
-		match = show_filename.match(filename)
-		secondary = fallback_filename.match(filename)
+
+		cleaned_filename = hd_match.sub('', filename)
+		match1 = show_filename.match(cleaned_filename)
+		match2 = show_filename_2.match(cleaned_filename)
+		match3 = show_filename_3.match(cleaned_filename)
 		hd = hd_match.search(filename)
-		if hd: hd = hd.group()
+		if hd:
+			hd = hd.group()
+		
+		matches = [m for m in (match1, match2, match3) if m]
 
-		if not match and secondary:
-			match = secondary
-
-		if match:
+		if matches:
+			match = matches[0]
 			name, season, episode = match.groups()
 
 			# replace all spacer chars with spaces
@@ -218,6 +223,9 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
 				name = ' '.join(word.capitalize() for word in name.split(' '))
 
 			if name in skip: continue
+			if name.endswith(' S'):
+				# work around a bug when encountering full season downloads
+				continue
 			
 			skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run, link, hd)
 			if skip_name:
