@@ -92,7 +92,7 @@ class ThreadSafeLogger:
 		print msg
 
 class ThreadPool:
-	def __init__(self, max_threads, log_returns=False, catch_returns=False, logger=None, stack_size=0):
+	def __init__(self, max_threads, log_returns=False, catch_returns=False, logger=None, stack_size=0, return_queue=1000):
 		self.lock = threading.Lock()
 		self.max = max_threads
 		self.logger = logger or (lambda *x: None)
@@ -101,7 +101,7 @@ class ThreadPool:
 		self.catch_returns = catch_returns
 
 		self.call_queue = Queue()
-		self.returns = Queue()
+		self.returns = Queue(return_queue)
 		self.spawn_workers()
 
 	def __call__(self, func):
