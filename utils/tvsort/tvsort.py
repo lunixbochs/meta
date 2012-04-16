@@ -78,21 +78,25 @@ class Folder:
 		return '<Folder "%s">' % self.name
 
 def extract(path):
-	first = os.listdir(path)
+	cwd = os.getcwd()
+	os.chdir(path)
+	first = os.listdir('.')
 	for entry in first:
 		if entry.endswith('.rar'):
-			rar = os.path.join(path, entry)
-			print 'Extracting: %s' % os.path.split(rar)[1],
-			os.popen('unrar x -o- %s' % rar)
+			print 'Extracting: %s' % entry,
+			os.popen('unrar x -o- %s' % entry)
+			break
 	
-	second = os.listdir(path)
+	second = os.listdir('.')
 	for entry in second:
 		ext = os.path.splitext(entry)[1]
 		if ext in extensions:
 			print '=> "%s"' % entry
+			os.chdir(cwd)
 			return entry, ext
 	else:
 		print '- Nothing found :('
+		os.chdir(cwd)
 		return None, None
 
 def move(path, filename, name, season, episode, folders, force_move=False, dry_run=False, link=False, hd=None, ext='.avi'):
@@ -129,10 +133,7 @@ def move(path, filename, name, season, episode, folders, force_move=False, dry_r
 
 	path = os.path.join(path, filename)
 	if os.path.isdir(path) and not dry_run:
-		cwd = os.getcwd()
-		os.chdir(path)
 		entry, ext = extract(path)
-		os.chdir(cwd)
 		if not entry:
 			print 'no extracted file found.'
 			return
