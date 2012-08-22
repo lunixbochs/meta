@@ -5,11 +5,12 @@ import re
 import sys
 import base64
 import struct
+import binascii
+
+hx = lambda s: ' '.join('%02x' % ord(c) for c in s)
+printable = lambda s: re.sub(r'[^\x20-\x7E]', '.', s)
 
 def hex_format(data):
-	hx = lambda s: ' '.join('%02x' % ord(c) for c in s)
-	printable = lambda s: re.sub(r'[^\x20-\x7E]', '.', s)
-
 	ret = ['hex:']
 	for i in xrange(0, len(data), 16):
 		s = data[i:i+16]
@@ -85,8 +86,17 @@ def convert(data):
 		ret.append(('dec', numbers(n)))
 
 	if hexf:
-		n = int(hexf.group(2), 16)
-		ret.append(('hex', numbers(n)))
+		hexd = hexf.group(2)
+		n = int(hexd, 16)
+
+		if len(hexd) % 2:
+			hexd = '0' + hexd
+
+		ret.append((
+			'hex',
+			numbers(n) + '\n'
+			' ascii: ' + printable(binascii.unhexlify(hexd))
+		))
 
 	return ret
 
