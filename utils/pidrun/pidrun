@@ -1,0 +1,18 @@
+#!/bin/bash -u
+# run an executable with a specified PID
+
+if [[ $# -ne 2 ]]; then
+	echo "Usage: pidrun <pid> <target>"
+	exit 1
+fi
+
+pid="$1"
+target="$2"
+export target
+
+# paired with our kill -SIGHUP, exit the loop when the target program finishes
+trap exit SIGHUP
+
+while [[ 1 ]]; do
+	bash -c '[[ $$ -eq '"$pid"' ]] && { kill -SIGHUP "$PPID"; exec "$target"; }'
+done
