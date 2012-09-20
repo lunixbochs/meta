@@ -1,0 +1,41 @@
+#!/bin/bash -u
+
+split_file() {
+	out="$(echo "$4" | tr '[A-Z]' '[a-z]')"
+	count=$(($3 - $2))
+	cmd=( dd "if=$1" "of=$out" bs=1 "skip=$2" "count=$count" )
+	echo "${cmd[@]}"
+	${cmd[@]}
+	echo
+}
+
+file="${@: -1}"
+
+echo 'Running binwalk...'
+out=$(binwalk "$@" | tee /dev/stderr | tail -n+4)
+
+if [[ ! -n "$out" ]]; then
+	echo "No binwalk output. Exiting."
+	exit 1
+fi
+
+echo
+echo 'Splitting file...'
+
+IFS=$'\n'
+last_pos=0
+i=0
+for line in $out; do
+	let i++
+	pos=$(echo "$line" | awk {'print $1'})
+	if [[ "$pos" -ne 0 ]]; then
+		split_file "$file" "$last_pos" "$pos" "$i.$suffix"
+	fi
+	suffix=$(echo "$line" | awk {'print $3'})
+	last_pos="$pos"
+done
+
+let i++
+
+pos="$(wc -c "$file" | awk {'print $1'})"
+split_file "$file" "$last_pos" "$pos" "$i.$suffix"
