@@ -26,13 +26,13 @@ IFS=$'\n'
 last_pos=0
 i=0
 for line in $out; do
-	let i++
 	pos=$(echo "$line" | awk {'print $1'})
-	if [[ "$i" -gt 1 ]]; then
+	if [[ "$i" -gt 0 ]]; then
 		split_file "$file" "$last_pos" "$pos" "$i.$suffix"
 	fi
 	suffix=$(echo "$line" | awk {'print $3'})
 	last_pos="$pos"
+	let i++
 done
 
 let i++
