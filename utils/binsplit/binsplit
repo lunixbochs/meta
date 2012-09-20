@@ -28,7 +28,7 @@ i=0
 for line in $out; do
 	let i++
 	pos=$(echo "$line" | awk {'print $1'})
-	if [[ "$pos" -ne 0 ]]; then
+	if [[ "$i" -gt 1 ]]; then
 		split_file "$file" "$last_pos" "$pos" "$i.$suffix"
 	fi
 	suffix=$(echo "$line" | awk {'print $3'})
