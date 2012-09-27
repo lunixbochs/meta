@@ -122,14 +122,13 @@ class ThreadPool:
 			try:
 				result = func(*args, **kwargs)
 				if self.catch_returns or self.log_returns:
-					if result:
-						if isinstance(result, dict):
-							self.returned(result)
-						elif inspect.isgenerator(result):
-							for x in result:
-								self.returned(x)
-						else:
-							self.returned(result)
+					if isinstance(result, dict):
+						self.returned(result)
+					elif inspect.isgenerator(result):
+						for x in result:
+							self.returned(x)
+					else:
+						self.returned(result)
 			except:
 				self.logger(traceback.format_exc())
 			finally:
