@@ -10,6 +10,7 @@ contains two vague categories of code: utilities and snippets
   * macbinary: extracts a .zip, preserving __MACOSX resource forks as MacBinary files
   * permute: builds chains of similar characters and permutes possible combinations.
   * pidrun: run an executable with a specified PID
+  * repl: create a repl by passing arguments to an existing command
   * shotgun: quickly and intelligently converts input to several formats
   * tvsort: tries to automatically sort tv shows into an existing folder structure
 
