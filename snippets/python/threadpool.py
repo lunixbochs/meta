@@ -1,4 +1,4 @@
-from Queue import Queue
+from Queue import Queue, Empty
 import threading
 import traceback
 import inspect
@@ -148,6 +148,20 @@ class ThreadPool:
 			result = self.returns.get()
 			self.returns.task_done()
 			return result
+
+	def iter(self):
+		'''
+		act as a generator, returning results as they happen
+		this method assumes you've already queued all of your calls
+		'''
+		if not self.catch_returns:
+			raise Exception
+
+		while self.call_queue.unfinished_tasks > 0:
+			try:
+				yield self.returns.get(timeout=0.1)
+			except Empty:
+				pass
 
 	def flush(self):
 		'''
