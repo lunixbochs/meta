@@ -4,6 +4,18 @@ import traceback
 import inspect
 import os, stat
 
+def isiter(obj):
+	'''
+	test whether an object conforms to the iterator protocol
+	'''
+	try:
+		if obj.__iter__() == obj and obj.next:
+			return True
+	except AttributeError:
+		pass
+
+	return False
+
 class stack_size:
 	def __init__(self, stack_size):
 		self.stack_size = stack_size
@@ -122,9 +134,7 @@ class ThreadPool:
 			try:
 				result = func(*args, **kwargs)
 				if self.catch_returns or self.log_returns:
-					if isinstance(result, dict):
-						self.returned(result)
-					elif inspect.isgenerator(result):
+					if inspect.isgenerator(result) or isiter(result):
 						for x in result:
 							self.returned(x)
 					else:
@@ -162,6 +172,9 @@ class ThreadPool:
 				yield self.returns.get(timeout=0.1)
 			except Empty:
 				pass
+
+		for value in self.finish():
+			yield value
 
 	def flush(self):
 		'''
