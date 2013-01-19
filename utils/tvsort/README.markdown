@@ -1,4 +1,4 @@
-showsorter
+tvsort
 =========
 A Python script to intelligently sort television shows into folders based on filename.
 
@@ -17,7 +17,7 @@ Process
 * Extract a series name, season number, and episode number from the each file/folder in [source].
 * Match each series name exactly with a folder in one of the target folders, or skip that series for the entire run.
 * If the source path is a folder, check inside for archives to extract (currently only rar via 'unrar' works) and extract them, then check for video files to move (currently only a single resulting .avi or .mkv works) and set the copy flag to false for this file (because we extracted it ourselves, we assume moving instead of copying won't disrupt anything)
-* Copy (or move, if we extracted an archive) the video file we have decided to sort to [target folder]/[series]/Season [season]/[series] S[season]E[season].[ext]
+* Copy (or move, if we extracted an archive) the video file we have decided to sort to [target folder]/[series]/Season [season]/[series] S[season]E[episode].[ext]
 
 .auto files
 -----
