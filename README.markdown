@@ -7,11 +7,12 @@ contains two vague categories of code: utilities and snippets
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
   * hardlink: searches directories and suggests identical files to hardlink
-  * macbinary: extracts a .zip, preserving __MACOSX resource forks as MacBinary files
+  * macbinary: extracts a .zip, preserving \_\_MACOSX resource forks as MacBinary files
   * permute: builds chains of similar characters and permutes possible combinations.
   * pidrun: run an executable with a specified PID
   * repl: create a repl by passing arguments to an existing command
-  * shotgun: quickly and intelligently converts input to several formats
+  * shotgun: quickly converts input to several formats
+  * shotsum: run multiple checksums against input
   * tvsort: tries to automatically sort tv shows into an existing folder structure
 
 * __snippets__: batteries not included
