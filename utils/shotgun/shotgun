@@ -21,8 +21,6 @@ def hex_format(data):
 
 	ret.append(' %08x' % len(data))
 
-	ret += ['', 'base64: ' + base64.b64encode(data)]
-
 	return '\n'.join(ret)
 
 def endian_swap(num):
@@ -69,7 +67,8 @@ def convert(data):
 			b64 += (len(b64) % 4) * '='
 			try:
 				ascii = base64.b64decode(b64)
-				ret.append(('base64', hex_format(ascii)))
+				if b64 == base64.b64encode(ascii):
+					ret.append(('base64', hex_format(ascii)))
 			except TypeError:
 				pass
 
