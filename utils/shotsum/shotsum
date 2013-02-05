@@ -1,0 +1,59 @@
+#!/usr/bin/python
+
+import ctypes
+import hashlib
+import sys
+import zlib
+
+def pad(data, num, c='\0'):
+    return data + (num - len(data) % num) * c
+
+def negate(n):
+    return n ^ (2 ** 32 - 1)
+
+def _hex(n):
+    h = hex(n).rstrip('L')
+    if len(h) % 2:
+        h = '0x0' + h[3:]
+
+    return h
+
+def checksums(data):
+    c = {}
+    crc32 = ctypes.c_uint32(zlib.crc32(data)).value
+    c['crc32'] = _hex(crc32)
+    c['crc32~'] = _hex(negate(crc32))
+    c['adler32'] = _hex(zlib.adler32(data))
+    c['md5'] = '0x' + hashlib.md5(data).hexdigest()
+    c['sha1'] = '0x' + hashlib.sha1(data).hexdigest()
+    return c
+
+def shotsum(data):
+    sections = {}
+    sections['original'] = checksums(data)
+    sections['stripped'] = checksums(data.strip())
+    sections['null-stripped'] = checksums(data.strip().strip('\0'))
+    sections['8-byte null-padded'] = checksums(pad(data, 8))
+    return sections
+
+def pretty(data):
+    for name, section in sorted(shotsum(data).items()):
+        print
+        print '%s:' % name
+
+        longest = max(len(k) for k in section.keys())
+        for key, value in sorted(section.items()):
+            print '  %s: %s' % (key.rjust(longest), value)
+
+if __name__ == '__main__':
+    if sys.stdin.isatty():
+        if len(sys.argv) == 2:
+            with open(sys.argv[1]) as f:
+                pretty(f.read())
+        else:
+            print 'Usage: %s <filename>' % sys.argv[0]
+            print 'Usage: cat x | %s' % sys.argv[0]
+
+    else:
+        pretty(sys.stdin.read())
+
