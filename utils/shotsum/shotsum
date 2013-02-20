@@ -1,12 +1,23 @@
 #!/usr/bin/python
 
+import argparse
 import ctypes
 import hashlib
+import itertools
 import sys
 import zlib
 
+try:
+    import crcmod
+except ImportError:
+    crcmod = None
+
 def pad(data, num, c='\0'):
-    return data + (num - len(data) % num) * c
+    align = num - len(data) % num
+    if align != num:
+        return data + align * c
+    else:
+        return data
 
 def negate(n):
     return n ^ (2 ** 32 - 1)
@@ -14,46 +25,98 @@ def negate(n):
 def _hex(n):
     h = hex(n).rstrip('L')
     if len(h) % 2:
-        h = '0x0' + h[3:]
+        h = '0x0' + h[2:]
 
     return h
 
-def checksums(data):
-    c = {}
-    crc32 = ctypes.c_uint32(zlib.crc32(data)).value
-    c['crc32'] = _hex(crc32)
-    c['crc32~'] = _hex(negate(crc32))
-    c['adler32'] = _hex(zlib.adler32(data))
-    c['md5'] = '0x' + hashlib.md5(data).hexdigest()
-    c['sha1'] = '0x' + hashlib.sha1(data).hexdigest()
-    return c
+def checksums(data, use_all=True):
+    sums = {}
+    if use_all and crcmod:
+        names = [c[0] for c in crcmod.predefined._crc_definitions_table]
+        for name in names:
+            crc = crcmod.predefined.Crc(name)
+            crc.update(data)
+            sums[name] = _hex(crc.crcValue)
+    else:
+        crc32 = ctypes.c_uint32(zlib.crc32(data)).value
+        sums['crc32'] = _hex(crc32)
+        sums['crc32~'] = _hex(negate(crc32))
 
-def shotsum(data):
+    if use_all:
+        adler32 = ctypes.c_uint32(zlib.adler32(data)).value
+        sums['adler32'] = _hex(adler32)
+
+    normal = ('md5', 'sha1')
+    openssl = ('md4', 'mdc2', 'rmd160', 'sha')
+    extra = ('sha224', 'sha256', 'sha384', 'sha512') + openssl
+    for name in normal + extra:
+        if not (name in extra) or use_all:
+            try:
+                func = hashlib.new(name)
+                func.update(data)
+                sums[name] = '0x' + func.hexdigest()
+            except:
+                import traceback
+                print traceback.format_exc()
+                pass
+
+    return sums
+
+filters = {
+    'stripped': lambda x: x.strip(),
+    'null-stripped': lambda x: x.strip('\0'),
+    '8-byte null-padded': lambda x: pad(x, 8),
+    '8-byte 0xFF-padded': lambda x: pad(x, 8, c='\xFF'),
+}
+
+def shotsum(data, use_all=False):
     sections = {}
-    sections['original'] = checksums(data)
-    sections['stripped'] = checksums(data.strip())
-    sections['null-stripped'] = checksums(data.strip().strip('\0'))
-    sections['8-byte null-padded'] = checksums(pad(data, 8))
+    already = set()
+    for i in xrange(len(filters)):
+        for choices in itertools.permutations(filters, i):
+            names = ', '.join(choices)
+            mangled = data
+            for name in choices:
+                data = filters[name](mangled)
+
+            if mangled in already:
+                continue
+            else:
+                sections[names] = checksums(mangled, use_all=use_all)
+                already.add(mangled)
+
     return sections
 
-def pretty(data):
-    for name, section in sorted(shotsum(data).items()):
+def pretty(data, use_all=False):
+    sums = shotsum(data, use_all=use_all)
+    for name, section in sorted(sums.items()):
         print
-        print '%s:' % name
+        if name:
+            print '%s:' % name
+        else:
+            print 'unmodified:'
 
         longest = max(len(k) for k in section.keys())
         for key, value in sorted(section.items()):
             print '  %s: %s' % (key.rjust(longest), value)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='run multiple checksums/hashes against input')
+    parser.add_argument('-a', '--all',
+        help='Use all available algorithms', action='store_true')
+    parser.add_argument('filename',
+        help='Input file (can also use stdin).', nargs='?')
+    args = parser.parse_args()
+
     if sys.stdin.isatty():
-        if len(sys.argv) == 2:
-            with open(sys.argv[1]) as f:
-                pretty(f.read())
+        if args.filename:
+            with open(args.filename) as f:
+                pretty(f.read(), use_all=args.all)
         else:
-            print 'Usage: %s <filename>' % sys.argv[0]
-            print 'Usage: cat x | %s' % sys.argv[0]
+            parser.print_help()
+            sys.exit(1)
 
     else:
-        pretty(sys.stdin.read())
+        pretty(sys.stdin.read(), use_all=args.all)
 
