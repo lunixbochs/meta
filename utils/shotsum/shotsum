@@ -65,6 +65,7 @@ def checksums(data, use_all=True):
 filters = {
     'stripped': lambda x: x.strip(),
     'null-stripped': lambda x: x.strip('\0'),
+    '0xFF-stripped': lambda x: x.strip('\xFF'),
     '8-byte null-padded': lambda x: pad(x, 8),
     '8-byte 0xFF-padded': lambda x: pad(x, 8, c='\xFF'),
 }
