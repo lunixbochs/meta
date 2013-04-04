@@ -14,6 +14,7 @@ contains two vague categories of code: utilities and snippets
   * shotgun: quickly converts input to several formats
   * shotsum: run multiple checksums against input
   * tvsort: tries to automatically sort tv shows into an existing folder structure
+  * vm: simplify managing and logging into a headless linux vmware instance
 
 * __snippets__: batteries not included
   * python
