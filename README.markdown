@@ -6,6 +6,7 @@ contains two vague categories of code: utilities and snippets
   * autostrace: given a username and process name, will automatically strace+log matching processes
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
+  * gateway: print a list of interfaces, their IPs, and gateway IPs.
   * hardlink: searches directories and suggests identical files to hardlink
   * macbinary: extracts a .zip, preserving \_\_MACOSX resource forks as MacBinary files
   * permute: builds chains of similar characters and permutes possible combinations.
