@@ -29,6 +29,12 @@ def _hex(n):
 
     return h
 
+def netgear(data):
+    total = sum(ord(c) for c in data[::2])
+    chk = (total & 0xFFFF) + (total >> 16)
+    chk = ~((chk >> 16) + chk) & 0xFFFF
+    return chk
+
 def checksums(data, use_all=True):
     sums = {}
     if use_all and crcmod:
@@ -46,6 +52,7 @@ def checksums(data, use_all=True):
         adler32 = ctypes.c_uint32(zlib.adler32(data)).value
         sums['adler32'] = _hex(adler32)
 
+    sums['netgear'] = _hex(netgear(data))
     normal = ('md5', 'sha1')
     openssl = ('md4', 'mdc2', 'rmd160', 'sha')
     extra = ('sha224', 'sha256', 'sha384', 'sha512') + openssl
