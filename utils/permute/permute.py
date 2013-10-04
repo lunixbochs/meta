@@ -4,7 +4,7 @@ class Base:
 	def __init__(self, possible):
 		self.possible = set(possible)
 		self.index = 0
-	
+
 	def current(self):
 		return sorted(self.possible)[self.index]
 
@@ -17,13 +17,13 @@ class Base:
 
 	def __contains__(self, value):
 		return value in self.possible
-	
+
 	def __len__(self):
 		return len(self.possible)
-	
+
 	def __str__(self):
 		return self.current()
-	
+
 	def __repr__(self):
 		return 'Base(['+','.join(self.possible)+'])'
 
@@ -31,7 +31,7 @@ class Chain(Base):
 	def __init__(self, possible):
 		Base.__init__(self, possible)
 		self.n = None
-	
+
 	def chain(self, next):
 		self.n = next
 
@@ -44,7 +44,7 @@ class Chain(Base):
 class Single(Chain):
 	def __init__(self, possible):
 		Base.__init__(self, set(possible))
-	
+
 	def current(self):
 		return tuple(self.possible)[0]
 
@@ -54,7 +54,7 @@ class Single(Chain):
 class Word:
 	def __init__(self, chains):
 		self.chains = chains
-	
+
 	def __str__(self):
 		return ''.join(str(chain) for chain in self.chains)
 
@@ -125,7 +125,7 @@ def permute(string):
 	while last.index == 0:
 		first.next()
 		yield word
-	
+
 	while last.index != 0:
 		first.next()
 		yield word
@@ -139,12 +139,12 @@ if __name__ == '__main__':
 		for word in sys.argv[1:]:
 			for result in permute(word):
 				print result
-	
+
 	if not sys.stdin.isatty():
 		output = True
 		for line in sys.stdin:
 			for result in permute(line.strip()):
 				print result
-	
+
 	if not output:
 		print 'Usage: ./permute.py word ...'

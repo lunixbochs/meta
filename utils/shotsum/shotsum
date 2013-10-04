@@ -127,4 +127,3 @@ if __name__ == '__main__':
 
     else:
         pretty(sys.stdin.read(), use_all=args.all)
-
