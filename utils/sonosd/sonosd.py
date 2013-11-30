@@ -2,8 +2,10 @@
 
 import redis
 from soco import SoCo, SonosDiscovery
+from soco.exceptions import SoCoException
 import threading
 import time
+import traceback
 
 EXCLUDE = []
 
@@ -96,7 +98,10 @@ class Daemon:
         ps.subscribe('sonos')
         for item in ps.listen():
             if item['type'] == 'message':
-                self.handle(item['data'])
+                try:
+                    self.handle(item['data'])
+                except SoCoException as e:
+                    print 'Sonos Error:', e
 
     def handle(self, cmd):
         sonos = self.sonos
