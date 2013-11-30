@@ -87,6 +87,7 @@ class Daemon:
             if d.get_speaker_info().get('zone_name').lower() not in EXCLUDE
         ]
         self.sonos = find_master(self.devices)
+        self.info = self.sonos.get_speaker_info()
         thread = threading.Thread(target=self.volume_thread)
         thread.daemon = True
         thread.start()
@@ -119,6 +120,12 @@ class Daemon:
             self.sonos.next()
         elif cmd == 'prev':
             self.sonos.previous()
+        elif cmd == 'group':
+            self.sonos.switch_to_line_in()
+            self.sonos.play()
+            for device in self.devices:
+                if device != self.sonos:
+                    device.join(self.info['uid'])
 
 if __name__ == '__main__':
     Daemon().pump()
