@@ -35,7 +35,5 @@ for line in $out; do
 	let i++
 done
 
-let i++
-
 pos="$(wc -c "$file" | awk {'print $1'})"
 split_file "$file" "$last_pos" "$pos" "$i.$suffix"
