@@ -10,6 +10,14 @@ split_file() {
 }
 
 file="${@: -1}"
+base="$(basename "$file").split"
+outdir="$base"
+i=0
+while [[ -d "$outdir" ]]; do
+	let i++
+	outdir="${base}.${i}"
+done
+mkdir "$outdir"
 
 echo 'Running binwalk...'
 out=$(binwalk "$@" | tee /dev/stderr | tail -n+4)
@@ -25,15 +33,14 @@ echo 'Splitting file...'
 IFS=$'\n'
 last_pos=0
 i=0
+suffix="header"
 for line in $out; do
 	pos=$(echo "$line" | awk {'print $1'})
-	if [[ "$i" -gt 0 ]]; then
-		split_file "$file" "$last_pos" "$pos" "$i.$suffix"
-	fi
+	split_file "$file" "$last_pos" "$pos" "$outdir/$i.$suffix"
 	suffix=$(echo "$line" | awk {'print $3'})
 	last_pos="$pos"
 	let i++
 done
 
 pos="$(wc -c "$file" | awk {'print $1'})"
-split_file "$file" "$last_pos" "$pos" "$i.$suffix"
+split_file "$file" "$last_pos" "$pos" "$outdir/$i.$suffix"
