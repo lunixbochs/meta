@@ -44,6 +44,15 @@ def numbers(num):
 
     return '\n'.join(str(x) for x in ret)
 
+def unhex(hexd):
+    if isinstance(hexd, int):
+        hexd = hex(hexd)
+    if hexd.startswith('0x'):
+        hexd = hexd[2:]
+    if len(hexd) % 2:
+        hexd = '0' + hexd
+    return printable(binascii.unhexlify(hexd))
+
 def convert(data):
     # strip whitespace and nulls for numerical representation
     filtered = re.sub(r'[\s\0]', '', data)
@@ -82,19 +91,20 @@ def convert(data):
 
     if decf:
         n = int(decf.group(1), 10)
-        ret.append(('dec', numbers(n)))
+        ret.append((
+            'dec',
+            numbers(n) + '\n'
+            ' ascii: ' + unhex(n)
+        ))
 
     if hexf:
         hexd = hexf.group(2)
         n = int(hexd, 16)
 
-        if len(hexd) % 2:
-            hexd = '0' + hexd
-
         ret.append((
             'hex',
             numbers(n) + '\n'
-            ' ascii: ' + printable(binascii.unhexlify(hexd))
+            ' ascii: ' + unhex(hexd)
         ))
 
     return ret
