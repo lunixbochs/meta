@@ -67,7 +67,14 @@ def convert(data):
     hexf = re.match(r'^(0x)?([0-9A-Fa-f]+)$', filtered)
     b64f = re.match(r'^([A-Za-z\d+/]+)(={1,3})?$', filtered)
 
-    ret.append(('ascii', hex_format(data)))
+    ascii = hex_format(data)
+    try:
+        hdata = binascii.hexlify(data)
+        bint = int(hdata, 16)
+        ascii += '\n\n' + numbers(bint)
+    except Exception:
+        pass
+    ret.append(('ascii', ascii))
 
     if b64f:
         b64 = b64f.group(1)
