@@ -4,6 +4,7 @@ contains two vague categories of code: utilities and snippets
 
 * __utilities__: clever single-file solutions
   * autostrace: given a username and process name, will automatically strace+log matching processes
+  * beamsync: disable BeamSync on OS X.
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
   * gateway: print a list of interfaces, their IPs, and gateway IPs.
