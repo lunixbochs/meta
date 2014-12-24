@@ -12,6 +12,7 @@ contains two vague categories of code: utilities and snippets
   * permute: builds chains of similar characters and permutes possible combinations.
   * pidrun: run an executable with a specified PID
   * repl: create a repl by passing arguments to an existing command
+  * retina: set unscaled resolution modes on a Retina MacBook
   * shotgun: quickly converts input to several formats
   * shotsum: run multiple checksums against input
   * sonosd: Sonos control daemon
