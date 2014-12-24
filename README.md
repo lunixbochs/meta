@@ -3,14 +3,14 @@ meta
 contains two vague categories of code: utilities and snippets
 
 * __utilities__: clever single-file solutions
-  * autostrace: given a username and process name, will automatically strace+log matching processes
-  * beamsync: disable BeamSync on OS X.
+  * autostrace: creates strace logs for all matching processes
+  * beamsync: disable BeamSync on OS X
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
-  * gateway: print a list of interfaces, their IPs, and gateway IPs.
+  * gateway: print a list of interfaces, IPs, and gateway IPs
   * hardlink: searches directories and suggests identical files to hardlink
   * macbinary: extracts a .zip, preserving \_\_MACOSX resource forks as MacBinary files
-  * permute: builds chains of similar characters and permutes possible combinations.
+  * permute: builds chains of similar characters and permutes possible combinations
   * pidrun: run an executable with a specified PID
   * repl: create a repl by passing arguments to an existing command
   * retina: set unscaled resolution modes on a Retina MacBook
