@@ -9,6 +9,7 @@ contains two vague categories of code: utilities and snippets
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
   * gateway: print a list of interfaces, IPs, and gateway IPs
   * hardlink: searches directories and suggests identical files to hardlink
+  * jaraudit: checks your Java dependencies for CVEs
   * macbinary: extracts a .zip, preserving \_\_MACOSX resource forks as MacBinary files
   * permute: builds chains of similar characters and permutes possible combinations
   * pidrun: run an executable with a specified PID
