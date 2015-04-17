@@ -15,6 +15,7 @@ contains two vague categories of code: utilities and snippets
   * pidrun: run an executable with a specified PID
   * repl: create a repl by passing arguments to an existing command
   * retina: set unscaled resolution modes on a Retina MacBook
+  * revmatch: find the closest matching upstream revisions for local vendored code
   * shotgun: quickly converts input to several formats
   * shotsum: run multiple checksums against input
   * sonosd: Sonos control daemon
