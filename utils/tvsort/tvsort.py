@@ -8,11 +8,12 @@ import shutil
 import re
 import xmlrpclib
 
-words = r'([\w\.\- ]+?)'
+words = r'([\'\w\.\- ]+?)'
 spacers = re.compile(r'[\s_\-\.]+')
-show_filename = re.compile(words + r'S(\d+)E(\d+)', re.IGNORECASE)
-show_filename_2 = re.compile(words + r'(\d+)x(\d+)', re.IGNORECASE)
-show_filename_3 = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
+show_filename = re.compile(words + r'S(\d+)\s?EP?(\d+)', re.IGNORECASE)
+show_filename_2 = re.compile(words + r'(\d{4}\.[012]?[0-9]\.\d{1,2})()', re.IGNORECASE)
+show_filename_3 = re.compile(words + r'(\d+)x(\d+)', re.IGNORECASE)
+show_filename_4 = re.compile(words + r'(\d+?)(\d{1,2})', re.IGNORECASE)
 word_match = re.compile('(%s+)' % words, re.IGNORECASE)
 the_match = re.compile(r'(.*?)(, The)$', re.IGNORECASE)
 hd_match = re.compile(r'(720p|1080p)')
@@ -47,17 +48,20 @@ class Folder:
         self.regex = None
         self.naming = 'Season %(season)s/%(name)s %(epstr)s'
 
-        auto = Auto(os.path.join(path, '.auto'))
-        if 'regex' in auto:
+        self.auto = Auto(os.path.join(path, '.auto'))
+        if 'regex' in self.auto:
             try:
-                self.regex = re.compile(auto['regex'], re.IGNORECASE)
+                self.regex = re.compile(self.auto['regex'], re.IGNORECASE)
             except:
-                print 'error parsing regex for: %s' % auto.path
-        if 'name' in auto:
-            self.naming = auto['name']
+                print 'error parsing regex for: %s' % self.auto.path
+        if 'name' in self.auto:
+            self.naming = self.auto['name']
 
         if not self.regex:
-            self.regex = re.compile(word_match.match(self.name).group(), re.IGNORECASE)
+            # TODO: this is terrible for single-letter names
+            text = word_match.match(self.name).group()
+            text = spacers.sub(' ', text)
+            self.regex = re.compile(re.escape(text), re.IGNORECASE)
 
     def match(self, name):
         match = self.regex.search(name)
@@ -67,12 +71,19 @@ class Folder:
         return False
 
     def rename(self, name, season, episode, hd=None, ext='.avi'):
-        epstr = 'S%02dE%02d' % (season, episode)
+        if season and episode:
+            season = int(season)
+            episode = int(episode)
+            epstr = 'S%02dE%02d' % (season, episode)
+        else:
+            epstr = season
+            if not self.auto:
+                self.naming = '%(name)s %(epstr)s'
         target = self.naming % {'name':name, 'season':season, 'episode':episode, 'epstr':epstr}
         if hd:
             target = '%s (%s)' % (target, hd)
 
-        return self.path, target + ext
+        return self.path, target + ext, epstr
 
     def __repr__(self):
         return '<Folder "%s">' % self.name
@@ -109,7 +120,7 @@ def move(path, filename, name, season, episode, folders, force_move=False, dry_r
         print 'Skipped "%s" (example: %s)' % (name, filename)
         return True
 
-    target_folder, target = folder.rename(name, season, episode, hd, ext)
+    target_folder, target, epstr = folder.rename(name, season, episode, hd, ext)
 
     no_ext = os.path.splitext(os.path.join(target_folder, target))[0]
     test_base = os.path.split(no_ext)[0]
@@ -132,6 +143,8 @@ def move(path, filename, name, season, episode, folders, force_move=False, dry_r
                         return
 
     path = os.path.join(path, filename)
+    if not os.path.exists(path):
+        return
     if os.path.isdir(path) and not dry_run:
         entry, ext = extract(path)
         if not entry:
@@ -143,16 +156,13 @@ def move(path, filename, name, season, episode, folders, force_move=False, dry_r
         path = os.path.join(path, entry)
         copy = False
 
-    target_folder, target = folder.rename(name, season, episode, hd, ext)
+    target_folder, target, epstr = folder.rename(name, season, episode, hd, ext)
     target_path, target_filename = os.path.split(os.path.join(target_folder, target))
-
-    print
-    print ('%s S%02dE%02d => %s' % (name, season, episode, target)),
+    print ('%s %s => %s' % (name, epstr, target)),
 
     target = os.path.join(target_folder, target)
     if dry_run:
         verb = copy and 'copy' or 'move'
-        print
         print 'Would %s %s => %s' % (verb, path, target)
     else:
         if copy and not force_move:
@@ -204,11 +214,12 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
         match1 = show_filename.match(cleaned_filename)
         match2 = show_filename_2.match(cleaned_filename)
         match3 = show_filename_3.match(cleaned_filename)
+        match4 = show_filename_4.match(cleaned_filename)
         hd = hd_match.search(filename)
         if hd:
             hd = hd.group()
 
-        matches = [m for m in (match1, match2, match3) if m]
+        matches = [m for m in (match1, match2, match3, match4) if m]
 
         if matches:
             match = matches[0]
@@ -228,7 +239,7 @@ def run(source, targets, force_move=False, dry_run=False, link=False):
                 # work around a bug when encountering full season downloads
                 continue
 
-            skip_name = move(path, filename, name, int(season), int(episode), folders, force_move, dry_run, link, hd)
+            skip_name = move(path, filename, name, season, episode, folders, force_move, dry_run, link, hd)
             if skip_name:
                 skip.add(name)
 
