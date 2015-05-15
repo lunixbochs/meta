@@ -133,24 +133,28 @@ def search(paths):
                         yield match, artifact, version
                 continue
 
-            zf = zipfile.ZipFile(match, 'r')
-            contents = None
+            filename = os.path.splitext(os.path.basename(match))[0].strip()
+            version = None
             try:
-                f = zf.open('META-INF/MANIFEST.MF')
-                contents = f.read()
-            except KeyError:
-                pass
-            finally:
-                zf.close()
-            if contents is not None:
+                zf = zipfile.ZipFile(match, 'r')
+                try:
+                    f = zf.open('META-INF/MANIFEST.MF')
+                    contents = f.read()
+                except KeyError:
+                    continue
+                finally:
+                    zf.close()
                 if 'Implementation-Version: ' in contents:
                     version = contents.split('Implementation-Version: ', 1)[1].split('\n', 1)[0].strip()
-                    name = os.path.splitext(os.path.basename(match))[0].strip()
-                    if '"' in version:
-                        version = version.split('"', 3)[1]
-                    version = version.split(' ', 1)[0].split('+', 1)[0]
-                    name = name.split(version, 1)[0].split('_', 1)[0].rstrip('-_.')
-                    yield match, name, version
+            except zipfile.BadZipfile:
+                version = filename.split('-', 1)[1]
+
+            if version is not None:
+                if '"' in version:
+                    version = version.split('"', 3)[1]
+                version = version.split(' ', 1)[0].split('+', 1)[0]
+                name = filename.split(version, 1)[0].split('_', 1)[0].rstrip('-_.')
+                yield match, name, version
 
 def shellquote(s):
     return "'%s'" % s.replace('\\', '\\\\').replace("'", "\\'")
