@@ -175,8 +175,6 @@ if __name__ == '__main__':
         print
         if base:
             print "pushd %s" % shellquote(base)
-        print "git clone https://github.com/victims/victims-cve-db.git"
-        print "# only if you don't have git:"
         print "wget https://github.com/victims/victims-cve-db/archive/master.tar.gz"
         print "tar -xf master.tar.gz; mv victims-cve-db-master victims-cve-db"
         if base:
