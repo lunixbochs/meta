@@ -4,11 +4,34 @@ gcc "$0" -framework Foundation -framework AppKit -o retina
 exit 0
 */
 
+#import <Foundation/Foundation.h>
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "retina.h"
+typedef struct {
+    uint32_t mode;
+    uint32_t flags;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    uint32_t dc2[42];
+    uint16_t dc3;
+    uint16_t freq;
+    uint32_t dc4[4];
+    float scale;
+
+    char name[32];
+    int skip;
+} display_mode_t;
+
+#define MODE_SIZE (sizeof(display_mode_t) - sizeof(char) * 32 - sizeof(int))
+void CGSGetCurrentDisplayMode(CGDirectDisplayID display, int *mode);
+void CGSConfigureDisplayMode(CGDisplayConfigRef config, CGDirectDisplayID display, int mode);
+void CGSGetNumberOfDisplayModes(CGDirectDisplayID display, int *count);
+void CGSGetDisplayModeDescriptionOfLength(CGDirectDisplayID display, int index, display_mode_t *mode, int length);
 
 // sorts for highest effective resolution modes first
 int sort_modes(const void *a, const void *b) {
@@ -51,30 +74,26 @@ void set_display_mode(CGDirectDisplayID display, int mode) {
     CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
 }
 
-int main(int argc, const char **argv) {
-    CGDirectDisplayID main_display = CGMainDisplayID();
+void print_display(CGDirectDisplayID display, int num) {
     display_mode_t *modes;
     int count;
-    get_all_modes(CGMainDisplayID(), &modes, &count);
+    get_all_modes(display, &modes, &count);
 
-    if (argc >= 2) {
-        // select argv[1] as current mode
-        for (int i = 0; i < count; i++) {
-            if (strcmp(modes[i].name, argv[1]) == 0) {
-                if (modes[i].mode == get_display_mode(main_display)) {
-                    printf("Mode already active.\n");
-                    return 1;
-                }
-                set_display_mode(CGMainDisplayID(), modes[i].mode);
-                return 0;
-            }
+    int current_mode_num = get_display_mode(display);
+    display_mode_t *current_mode;
+    for (int i = 0; i < count; i++) {
+        if (modes[i].mode == current_mode_num) {
+            current_mode = &modes[i];
         }
-        printf("Mode not found.\n\n");
     }
 
-    // print usage and mode columns
-    printf("Usage: %s <mode>\n", argv[0]);
-    printf("Modes:\n");
+    printf("Display [%d]", num);
+    if (current_mode != NULL) {
+        printf(" (now: %s)\n", current_mode->name);
+    } else {
+        printf("\n");
+    }
+    printf("  Allowed modes:\n  ");
     for (int i = 0; i < count; i++) modes[i].skip = 0;
     for (int i = 0; i < count; i++) {
         display_mode_t *a = &modes[i], *b;
@@ -94,7 +113,52 @@ int main(int argc, const char **argv) {
                 b->skip = 1;
             }
         }
-        printf("\n");
+        printf("\n  ");
     }
-    return 1;
+    printf("\n");
+}
+
+void set_friendly_mode(CGDirectDisplayID display, int num, const char *mode) {
+    display_mode_t *modes;
+    int count;
+    get_all_modes(display, &modes, &count);
+    int current_mode_num = get_display_mode(display);
+
+    for (int i = 0; i < count; i++) {
+        if (strcmp(modes[i].name, mode) == 0) {
+            if (modes[i].mode == current_mode_num) {
+                printf("[%d] already at %s\n", num, mode);
+                return;
+            }
+            set_display_mode(display, modes[i].mode);
+            return;
+        }
+    }
+    printf("[%d] does not support mode %s\n", num, mode);
+    print_display(display, num);
+}
+
+int main(int argc, const char **argv) {
+    CGDirectDisplayID activeDisplays[128];
+    uint32_t count;
+    CGGetActiveDisplayList(128, activeDisplays, &count);
+    if (argc < 2) {
+        printf("Usage: %s [display] <mode>\n", argv[0]);
+        for (int i = 0; i < count; i++) {
+            print_display(activeDisplays[i], i);
+        }
+        return 1;
+    } else if (argc == 2) {
+        set_friendly_mode(CGMainDisplayID(), 0, argv[1]);
+    } else if (argc > 2) {
+        for (int i = 1; i < argc; i += 2) {
+            int display = strtol(argv[i], NULL, 10);
+            if (display >= 0 && display < count && i + 1 < argc) {
+                set_friendly_mode(activeDisplays[display], display, argv[i + 1]);
+            } else {
+                printf("Invalid final display arguments (at %s).\n", argv[i]);
+            }
+        }
+    }
+    return 0;
 }
