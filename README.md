@@ -8,6 +8,7 @@ contains two vague categories of code: utilities and snippets
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
   * gateway: print a list of interfaces, IPs, and gateway IPs
+  * gitslurp: download all repositories from a GitHub organization
   * hardlink: searches directories and suggests identical files to hardlink
   * jaraudit: checks your Java dependencies for CVEs
   * macbinary: extracts a .zip, preserving \_\_MACOSX resource forks as MacBinary files
