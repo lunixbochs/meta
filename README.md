@@ -7,6 +7,7 @@ contains two vague categories of code: utilities and snippets
   * beamsync: disable BeamSync on OS X
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
+  * dumpmem: dump all mapped memory of a process on OS X
   * gateway: print a list of interfaces, IPs, and gateway IPs
   * gitslurp: download all repositories from a GitHub organization
   * hardlink: searches directories and suggests identical files to hardlink
