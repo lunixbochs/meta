@@ -90,6 +90,8 @@ first_dedup = set()
 def check(db, package, version):
     global first_dedup
     out = []
+    if not package.strip():
+        return out
     for artifact in db['affected']:
         _id = artifact['artifactId']
         if name_match(package, _id):
