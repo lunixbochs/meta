@@ -117,46 +117,50 @@ def load(yml):
 def search(paths):
     for path in paths:
         for match in find(path, '*.jar', 'pom.xml'):
-            if os.path.basename(match) == 'pom.xml':
-                x = parseXML(match)
-                deps = x.getElementsByTagName('dependency')
-                for d in deps:
-                    artifact = d.getElementsByTagName('artifactId')[0].childNodes[0].data
-                    version = d.getElementsByTagName('version')
-                    if version:
-                        try:
-                            version = version[0].childNodes[0].data
-                            m = re.match(r'^\$\{(.+)\}$', version)
-                            if m:
-                                lookup = m.group(1)
-                                version = x.getElementsByTagName(lookup)[0].childNodes[0].data
-                        except Exception:
-                            continue
-                        yield match, artifact, version
-                continue
-
-            filename = os.path.splitext(os.path.basename(match))[0].strip()
-            version = None
             try:
-                zf = zipfile.ZipFile(match, 'r')
-                try:
-                    f = zf.open('META-INF/MANIFEST.MF')
-                    contents = f.read()
-                except KeyError:
+                if os.path.basename(match) == 'pom.xml':
+                    x = parseXML(match)
+                    deps = x.getElementsByTagName('dependency')
+                    for d in deps:
+                        artifact = d.getElementsByTagName('artifactId')[0].childNodes[0].data
+                        version = d.getElementsByTagName('version')
+                        if version:
+                            try:
+                                version = version[0].childNodes[0].data
+                                m = re.match(r'^\$\{(.+)\}$', version)
+                                if m:
+                                    lookup = m.group(1)
+                                    version = x.getElementsByTagName(lookup)[0].childNodes[0].data
+                            except Exception:
+                                continue
+                            yield match, artifact, version
                     continue
-                finally:
-                    zf.close()
-                if 'Implementation-Version: ' in contents:
-                    version = contents.split('Implementation-Version: ', 1)[1].split('\n', 1)[0].strip()
-            except zipfile.BadZipfile:
-                version = filename.split('-', 1)[1]
 
-            if version is not None:
-                if '"' in version:
-                    version = version.split('"', 3)[1]
-                version = version.split(' ', 1)[0].split('+', 1)[0]
-                name = filename.split(version, 1)[0].split('_', 1)[0].rstrip('-_.')
-                yield match, name, version
+                filename = os.path.splitext(os.path.basename(match))[0].strip()
+                version = None
+                try:
+                    zf = zipfile.ZipFile(match, 'r')
+                    try:
+                        f = zf.open('META-INF/MANIFEST.MF')
+                        contents = f.read()
+                    except KeyError:
+                        continue
+                    finally:
+                        zf.close()
+                    if 'Implementation-Version: ' in contents:
+                        version = contents.split('Implementation-Version: ', 1)[1].split('\n', 1)[0].strip()
+                except zipfile.BadZipfile:
+                    version = filename.split('-', 1)[1]
+
+                if version is not None:
+                    if '"' in version:
+                        version = version.split('"', 3)[1]
+                    version = version.split(' ', 1)[0].split('+', 1)[0]
+                    name = filename.split(version, 1)[0].split('_', 1)[0].rstrip('-_.')
+                    yield match, name, version
+            except Exception:
+                import traceback
+                traceback.print_exc()
 
 def shellquote(s):
     return "'%s'" % s.replace('\\', '\\\\').replace("'", "\\'")
