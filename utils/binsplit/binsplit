@@ -1,46 +1,61 @@
-#!/bin/bash -u
+#!/usr/bin/env python2
+import os
+import subprocess
 
-split_file() {
-	out="$(echo "$4" | tr '[A-Z]' '[a-z]')"
-	count=$(($3 - $2))
-	cmd=( dd "if=$1" "of=$out" bs=1 "skip=$2" "count=$count" )
-	echo "${cmd[@]}"
-	${cmd[@]}
-	echo
-}
+def binwalk(path):
+    p = subprocess.Popen(['binwalk', path], stdout=subprocess.PIPE)
+    return p.communicate('')[0]
 
-file="${@: -1}"
-base="$(basename "$file").split"
-outdir="$base"
-i=0
-while [[ -d "$outdir" ]]; do
-	let i++
-	outdir="${base}.${i}"
-done
-mkdir "$outdir"
+def split(out, path, start, end):
+    print('%-15s 0x%x - 0x%x' % (os.path.basename(out), start, end))
+    with open(out, 'wb') as o:
+        with open(path, 'rb') as f:
+            f.seek(start)
+            length = end - start
+            align = length % 1024
+            for i in xrange(0, length - align, 1024):
+                o.write(f.read(1024))
+            if align:
+                o.write(f.read(align))
 
-echo 'Running binwalk...'
-out=$(binwalk "$@" | tee /dev/stderr | tail -n+4)
+def binsplit(path, walk):
+    base = os.path.basename(path)
+    i = 1
+    out = base + '.split'
+    while True:
+        if os.path.exists(out):
+            out = '%s.split.%d' % (base, i)
+            i += 1
+            continue
+        try:
+            os.mkdir(out)
+            break
+        except OSError as e:
+            if os.path.exists(out):
+                continue
+            raise e
 
-if [[ ! -n "$out" ]]; then
-	echo "No binwalk output. Exiting."
-	exit 1
-fi
+    last_pos = 0
+    suffix = 'header'
+    i = 0
+    for line in walk.split('\n')[3:]:
+        if not line.strip():
+            continue
+        pos = int(line.split()[0])
+        split(os.path.join(out, '%d.%s' % (i, suffix)), path, last_pos, pos)
+        suffix = line.split()[2].lower()
+        last_pos = pos
+        i += 1
+    
+    split(os.path.join(out, '%d.%s' % (i, suffix)), path, last_pos, os.stat(path).st_size)
 
-echo
-echo 'Splitting file...'
+if __name__ == '__main__':
+    import sys
+    if len(sys.argv) != 2:
+        print('Usage: %s <file>' % sys.argv[0])
+        sys.exit(1)
 
-IFS=$'\n'
-last_pos=0
-i=0
-suffix="header"
-for line in $out; do
-	pos=$(echo "$line" | awk {'print $1'})
-	split_file "$file" "$last_pos" "$pos" "$outdir/$i.$suffix"
-	suffix=$(echo "$line" | awk {'print $3'})
-	last_pos="$pos"
-	let i++
-done
-
-pos="$(wc -c "$file" | awk {'print $1'})"
-split_file "$file" "$last_pos" "$pos" "$outdir/$i.$suffix"
+    print('Running binwalk.')
+    out = binwalk(sys.argv[1])
+    print('--------')
+    binsplit(sys.argv[1], out)
