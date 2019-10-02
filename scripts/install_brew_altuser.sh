@@ -92,6 +92,9 @@ if [[ -e .bash_profile ]]; then
     sed -i.bak -e '/brew() {/d' .bash_profile
     remove_trailing_lines .bash_profile
     echo >> .bash_profile
+else
+    touch .bash_profile
+    chown "$SUDO_UID:$SUDO_GID" .bash_profile
 fi
 echo 'brew() { sudo /opt/sudobrew "$@"; }' >> .bash_profile
 rm -f .bash_profile.bak
