@@ -23,7 +23,7 @@ typedef struct {
     uint32_t dc4[4];
     float scale;
 
-    char name[32];
+    char name[64];
     int skip;
 } display_mode_t;
 
@@ -49,11 +49,19 @@ void get_all_modes(CGDirectDisplayID display, display_mode_t **retModes, int *co
     for (int i = 0; i < *count; i++) {
         CGSGetDisplayModeDescriptionOfLength(display, i, modes+i, MODE_SIZE);
         display_mode_t *mode = &modes[i];
-        if (mode->scale > 1) {
-            snprintf(mode->name, 32, "%dx%d@%.0f,%dhz", mode->width, mode->height, mode->scale, mode->freq);
-        } else {
-            snprintf(mode->name, 32, "%dx%d,%dhz", mode->width, mode->height, mode->freq);
+
+        off_t off = 0;
+#define add(...) off += snprintf(mode->name + off, 64 - off, __VA_ARGS__)
+        add("%dx%d", mode->width, mode->height);
+        if (mode->scale > 1)
+            add("@%.0f", mode->scale);
+        if (mode->freq > 0)
+            add(",%hu", mode->freq);
+        uint32_t depth = mode->depth * 8;
+        if (depth != 32) {
+            add(",%d-bit", depth);
         }
+#undef cat
     }
     qsort(modes, *count, sizeof(display_mode_t), sort_modes);
     *retModes = modes;
@@ -94,22 +102,29 @@ void print_display(CGDirectDisplayID display, int num) {
         printf("\n");
     }
     printf("  Allowed modes:\n  ");
-    for (int i = 0; i < count; i++) modes[i].skip = 0;
+    int pad = 0;
+    for (int i = 0; i < count; i++) {
+        modes[i].skip = 0;
+        int len = strlen(modes[i].name);
+        if (len > pad) pad = len;
+    }
+    char fmt[32] = {0};
+    snprintf(fmt, 32, "%%%ds", pad + 2);
     for (int i = 0; i < count; i++) {
         display_mode_t *a = &modes[i], *b;
         if (a->skip) continue;
         a->skip = 1;
         // pad to column * scale (in case a resolution isn't available unscaled?)
         for (int s = 1; s < a->scale; s++)
-            printf("%18s", "");
-        printf("%18s", a->name);
+            printf(fmt, "");
+        printf(fmt, a->name);
         // print scaled equivalents in the same row
         for (int j = 0; j < count; j++) {
             b = &modes[j];
             if (a == b || b->skip) continue;
             if (a->width * a->scale == b->width * b->scale &&
                     a->height * a->scale == b->height * b->scale) {
-                printf("%18s", b->name);
+                printf(fmt, b->name);
                 b->skip = 1;
             }
         }
