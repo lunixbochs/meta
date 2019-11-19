@@ -50,9 +50,9 @@ void get_all_modes(CGDirectDisplayID display, display_mode_t **retModes, int *co
         CGSGetDisplayModeDescriptionOfLength(display, i, modes+i, MODE_SIZE);
         display_mode_t *mode = &modes[i];
         if (mode->scale > 1) {
-            snprintf(mode->name, 32, "%dx%d@%.0f", mode->width, mode->height, mode->scale);
+            snprintf(mode->name, 32, "%dx%d@%.0f,%dhz", mode->width, mode->height, mode->scale, mode->freq);
         } else {
-            snprintf(mode->name, 32, "%dx%d", mode->width, mode->height);
+            snprintf(mode->name, 32, "%dx%d,%dhz", mode->width, mode->height, mode->freq);
         }
     }
     qsort(modes, *count, sizeof(display_mode_t), sort_modes);
@@ -101,15 +101,15 @@ void print_display(CGDirectDisplayID display, int num) {
         a->skip = 1;
         // pad to column * scale (in case a resolution isn't available unscaled?)
         for (int s = 1; s < a->scale; s++)
-            printf("%14s", "");
-        printf("%14s", a->name);
+            printf("%18s", "");
+        printf("%18s", a->name);
         // print scaled equivalents in the same row
         for (int j = 0; j < count; j++) {
             b = &modes[j];
             if (a == b || b->skip) continue;
             if (a->width * a->scale == b->width * b->scale &&
                     a->height * a->scale == b->height * b->scale) {
-                printf("%14s", b->name);
+                printf("%18s", b->name);
                 b->skip = 1;
             }
         }
