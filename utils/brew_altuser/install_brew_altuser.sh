@@ -53,6 +53,7 @@ done
 echo "[+] Extracting homebrew to /usr/local/Homebrew"
 curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C Homebrew
 chown -R "$user":"$gid" Homebrew
+ln -fs ../Homebrew/bin/brew bin/brew
 
 # set up sudobrew
 echo "[+] Creating /opt/sudobrew"
@@ -66,7 +67,7 @@ cd /
 export EDITOR=vim
 export HOME=/tmp
 export HOMEBREW_NO_ANALYTICS=1
-exec sudo -E -u brew /usr/local/Homebrew/bin/brew "$@"
+exec sudo -E -u brew /usr/local/bin/brew "$@"
 ' > /opt/sudobrew
 chown root:staff /opt/sudobrew
 chmod 555 /opt/sudobrew
