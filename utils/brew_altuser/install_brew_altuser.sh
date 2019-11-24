@@ -33,7 +33,7 @@ else
     uid=$(alloc_uid)
     dscl . create "/Users/$user" UniqueID "$uid"
     dscl . create "/Users/$user" PrimaryGroupID "$gid"
-    dscl . create "/Users/$user" NFSHomeDirectory /usr/local/Cellar
+    dscl . create "/Users/$user" NFSHomeDirectory /usr/local/Homebrew
     dscl . create "/Users/$user" IsHidden 1
 
     echo "[+] Created User: $user (uid=$uid gid=$gid)"
@@ -50,9 +50,9 @@ for dir in "${dirs[@]}"; do
 done
 
 # install homebrew
-echo "[+] Extracting homebrew to /usr/local/Cellar"
-curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C Cellar
-chown -R "$user":"$gid" Cellar
+echo "[+] Extracting homebrew to /usr/local/Homebrew"
+curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C Homebrew
+chown -R "$user":"$gid" Homebrew
 
 # set up sudobrew
 echo "[+] Creating /opt/sudobrew"
@@ -66,7 +66,7 @@ cd /
 export EDITOR=vim
 export HOME=/tmp
 export HOMEBREW_NO_ANALYTICS=1
-exec sudo -E -u brew /usr/local/Cellar/bin/brew "$@"
+exec sudo -E -u brew /usr/local/Homebrew/bin/brew "$@"
 ' > /opt/sudobrew
 chown root:staff /opt/sudobrew
 chmod 555 /opt/sudobrew
