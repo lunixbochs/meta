@@ -4,10 +4,11 @@ contains two vague categories of code: utilities and snippets
 
 * __utilities__: clever single-file solutions
   * autostrace: creates strace logs for all matching processes
-  * beamsync: disable BeamSync on OS X
+  * beamsync: disable BeamSync on macOS
+  * brew_altuser: install Homebrew as a different user on macOS
   * binsplit: splits a file into pieces based on the output of binwalk
   * dimmer: allows you to dim/undim monitors on Windows using hotkeys
-  * dumpmem: dump all mapped memory of a process on OS X
+  * dumpmem: dump all mapped memory of a process on macOS
   * gateway: print a list of interfaces, IPs, and gateway IPs
   * gitslurp: download all repositories from a GitHub organization
   * hardlink: searches directories and suggests identical files to hardlink
