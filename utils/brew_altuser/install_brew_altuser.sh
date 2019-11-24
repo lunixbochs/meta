@@ -103,7 +103,7 @@ shell_profile() {
     rm -f "${rc}.bak"
 }
 
-shell_profile "$HOME/.bashrc"
+shell_profile "$HOME/.bash_profile"
 if [[ -e /bin/zsh ]]; then
     shell_profile "$HOME/.zshrc"
 fi
