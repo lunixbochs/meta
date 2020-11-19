@@ -67,7 +67,7 @@ cd /
 export EDITOR=vim
 export HOME=/tmp
 export HOMEBREW_NO_ANALYTICS=1
-exec sudo -E -u brew /usr/local/bin/brew "$@"
+exec sudo -E -u brew -- arch -x86_64 /usr/local/bin/brew "$@"
 ' > /opt/sudobrew
 chown root:staff /opt/sudobrew
 chmod 555 /opt/sudobrew
