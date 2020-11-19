@@ -74,17 +74,10 @@ chmod 555 /opt/sudobrew
 chflags schg /opt/sudobrew
 
 # set up visudo
-tmpdir=$(mktemp -d)
-cd "$tmpdir"
-cp /etc/sudoers .
-sed -i.bak -e '/\/opt\/sudobrew/d' sudoers
-remove_trailing_lines sudoers
-echo >> sudoers
-echo "$SUDO_USER ALL=NOPASSWD: /opt/sudobrew *" >> sudoers
-visudo -cf sudoers
-cp sudoers /etc/sudoers
-cd /
-rm -rf "$tmpdir"
+sudofile=/etc/sudoers.d/brew_altuser
+rm -f "$sudofile"
+echo "$SUDO_USER ALL=NOPASSWD: /opt/sudobrew *" > "$sudofile"
+visudo -cf "$sudofile" || rm -f "$sudofile"
 
 # set up shell profile
 shell_profile() {
