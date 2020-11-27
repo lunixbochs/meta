@@ -3,6 +3,7 @@ meta
 contains two vague categories of code: utilities and snippets
 
 * __utilities__: clever single-file solutions
+  * aotool: create and dump Rosetta 2 .aot assemblies
   * autostrace: creates strace logs for all matching processes
   * beamsync: disable BeamSync on macOS
   * brew_altuser: install Homebrew as a different user on macOS
