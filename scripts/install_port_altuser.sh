@@ -20,7 +20,7 @@ alloc_uid() {
 }
 
 remove_trailing_lines() {
-    sed -i.bak -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$1"
+    sed -i '' -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$1"
 }
 
 # create user
@@ -40,18 +40,21 @@ else
     echo "[+] Created User: $user (uid=$uid gid=$gid)"
 fi
 
+tmpdir=$(mktemp -d)
+cd "$tmpdir"
+
 # populate /usr/local
 echo "[+] Creating and setting permissions on directories in /opt/local"
 mkdir -p /opt/local
 
 # install macports
 echo "[+] Installing macports to /opt/local"
-cd "$(mktemp -d)"
 curl -L https://github.com/macports/macports-base/releases/download/v2.7.1/MacPorts-2.7.1.tar.bz2 | tar xz --strip 1
 ./configure --prefix=/opt/local --with-install-user=port --with-install-group=everyone
 make -j"$njobs"
 make install
 echo "+universal" >> /opt/local/etc/macports/variants.conf
+sed -i '' -e 's/^#buildmakejobs/buildmakejobs/' /opt/local/etc/macports/macports.conf
 chown -R "$user:everyone" /opt/local
 
 # set up sudoport
@@ -70,17 +73,18 @@ exec sudo -E -u '"$user"' /opt/local/bin/port "$@"
 chown root:staff /opt/sudoport
 chmod 555 /opt/sudoport
 chflags schg /opt/sudoport
+mkdir -p /opt/local/sudobin
+ln -fs /opt/sudoport /opt/local/sudobin/port
 
 # set up visudo
-tmpdir=$(mktemp -d)
-cd "$tmpdir"
 cp /etc/sudoers .
-sed -i.bak -e '/\/opt\/sudoport/d' sudoers
+sed -i '' -e '/\/opt\/sudoport/d' sudoers
 remove_trailing_lines sudoers
 echo >> sudoers
 echo "$SUDO_USER ALL=NOPASSWD: /opt/sudoport *" >> sudoers
 visudo -cf sudoers
 cp sudoers /etc/sudoers
+rm -f sudoers
 cd /
 rm -rf "$tmpdir"
 
@@ -90,14 +94,14 @@ setup_profile() {
     echo "[+] Update $profile"
     cd "$HOME"
     if [[ -e "$profile" ]]; then
-        sed -i.bak -e '/port() {/d' "$profile"
+        sed -i '' -e '/port() {/d' "$profile"
         remove_trailing_lines "$profile"
-        echo >> .bash_profile
+        echo >> "$profile"
     else
         touch "$profile"
         chown "$SUDO_UID:$SUDO_GID" "$profile"
     fi
-    echo 'port() { sudo /opt/sudoport "$@"; }; export PATH="/opt/local/bin:/opt/local/sbin:$PATH"' >> "$profile"
+    echo 'port() { sudo /opt/sudoport "$@"; }; export PATH="/opt/local/sudobin:/opt/local/bin:/opt/local/sbin:$PATH"' >> "$profile"
 }
 setup_profile .bash_profile
 setup_profile .zprofile
