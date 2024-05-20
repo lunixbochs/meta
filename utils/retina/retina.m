@@ -1,10 +1,5 @@
-#/*
-echo "Building ./retina"
-gcc "$0" -framework Foundation -framework AppKit -o retina
-exit 0
-*/
-
 #import <Foundation/Foundation.h>
+#import <QuartzCore/QuartzCore.h>
 
 #include <stdint.h>
 #include <stdio.h>
