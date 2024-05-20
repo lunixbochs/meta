@@ -49,7 +49,7 @@ mkdir -p /opt/local
 
 # install macports
 echo "[+] Installing macports to /opt/local"
-curl -L https://github.com/macports/macports-base/releases/download/v2.7.1/MacPorts-2.7.1.tar.bz2 | tar xz --strip 1
+curl -L https://github.com/macports/macports-base/releases/download/v2.9.3/MacPorts-2.9.3.tar.bz2 | tar xz --strip 1
 ./configure --prefix=/opt/local --with-install-user=port --with-install-group=everyone
 make -j"$njobs"
 make install
