@@ -38,7 +38,7 @@ def unit_scale(number: float, byte_scale: bool=False, append: str=''):
     suffixes = ' kmbtq'
     if byte_scale:
         unit = 1024
-        suffixes = 'BKMGTEZY'
+        suffixes = 'BKMGTPEZY'
 
     acc = 1
     scales = []
