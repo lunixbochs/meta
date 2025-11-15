@@ -12,8 +12,10 @@ from tqdm import tqdm
 import argparse
 import functools
 import json
+import logging
 import os
 import random
+import subprocess
 import sys
 import time
 import traceback
@@ -28,6 +30,8 @@ class Device:
     errors: int
     seed: bytes
     state: str # reading | writing | done
+    serial: str = ""
+    found: bool = False
 
 @dataclass
 class State:
@@ -47,17 +51,42 @@ def wrap_exc[T](fn: Callable[T]) -> Callable[T]:
             raise
     return wrapper
 
+@functools.cache
+def read_path_to_serial() -> dict[str, str]:
+    try:
+        p = subprocess.run(["lsblk", "-pdno", "name,serial"], capture_output=True, check=True)
+        return dict(row.split() for row in p.stdout.decode().strip().split("\n"))
+    except Exception:
+        logging.exception("failed to read serials with lsblk, falling back to path tracking")
+    return {}
+
 @wrap_exc
 def device_init(path: str, state: State):
-    with open(path, "rb") as f:
-        size = f.seek(0, os.SEEK_END)
+    path = os.path.realpath(path, strict=True)
+    try:
+        with open(path, "rb") as f:
+            size = f.seek(0, os.SEEK_END)
+    except OSError:
+        return
+
     limit = size if not state.limit else min(size, state.limit)
     seed = path + "|" + os.urandom(8).hex()
 
-    if path in state.devices:
-        assert state.devices[path].size == size
-    else:
-        state.devices[path] = Device(
+    path_to_serial = read_path_to_serial()
+    serial = path_to_serial.get(path)
+    path_key = f"path:{path}"
+    serial_key = f"serial:{serial}" if serial else None
+    ideal_key = serial_key or path_key
+
+    # upgrade path device to ideal device key
+    if (device := state.devices.pop(path, None)) is not None:
+        state.devices[ideal_key] = device
+
+    elif (device := state.devices.pop(path_key, None)) is not None:
+        state.devices[ideal_key] = device
+
+    elif (device := state.devices.get(ideal_key)) is None:
+        device = Device(
             path=path,
             size=size,
             limit=limit,
@@ -67,51 +96,70 @@ def device_init(path: str, state: State):
             seed=seed,
             state="none",
         )
+        state.devices[ideal_key] = device
+
+    assert device.size == size
+    if serial is not None:
+        device.serial = serial
+    device.found = True
 
 @wrap_exc
 def device_work(device: Device, state: State) -> None:
-    blocksize = state.blocksize
+    if not device.found:
+        return
 
-    rng = SHISHUA(device.seed)
-    fd = os.open(device.path, os.O_WRONLY | os.O_DIRECT)
-    with os.fdopen(fd, "wb", buffering=-1) as f:
-        size = f.seek(0, os.SEEK_END)
-        device.state = "writing"
+    try:
+        blocksize = state.blocksize
 
-        device.wrote -= device.wrote % blocksize
-        buf = bytearray(blocksize)
-        for i in range(0, device.wrote, blocksize):
-            rng.fill(buf)
+        rng = SHISHUA(device.seed)
+        try:
+            fd = os.open(device.path, os.O_WRONLY | os.O_DIRECT)
+        except OSError as e:
+            logging.exception(f"device error: {device.path} {e!r}")
+            return
 
-        f.seek(device.wrote, os.SEEK_SET)
-        for i in range(device.wrote, device.limit, blocksize):
-            rng.fill(buf)
-            n = f.write(buf)
-            device.wrote += n
-        if device.wrote < device.limit:
-            print(f"WARNING: {device.path} wrote short ({device.wrote} < {device.limit})", file=sys.stderr)
+        with os.fdopen(fd, "wb", buffering=-1) as f:
+            size = f.seek(0, os.SEEK_END)
+            device.state = "writing"
 
-    rng = SHISHUA(device.seed)
-    with open(device.path, "rb") as f:
-        size = f.seek(0, os.SEEK_END)
-        device.state = "reading"
+            device.wrote -= device.wrote % blocksize
+            buf = bytearray(blocksize)
+            if device.wrote < device.limit:
+                for i in range(0, device.wrote, blocksize):
+                    rng.fill(buf)
 
-        buf = bytearray(blocksize)
-        device.read -= device.read % blocksize
-        for i in range(0, device.read, blocksize):
-            rng.fill(buf)
+            f.seek(device.wrote, os.SEEK_SET)
+            for i in range(device.wrote, device.limit, blocksize):
+                rng.fill(buf)
+                n = f.write(buf)
+                device.wrote += n
+            if device.wrote < device.limit:
+                logging.warning(f"{device.path} wrote short ({device.wrote} < {device.limit})")
 
-        f.seek(device.read, os.SEEK_SET)
-        for i in range(device.read, device.limit, blocksize):
-            n = f.readinto(buf)
-            x = rng.random_raw(blocksize)
-            if buf[:n] != x[:n]:
-                device.errors += 1
-                print(f"ERROR: {device.path} verify mismatch at {i}", file=sys.stderr)
-            device.read += n
-        if device.read < device.limit:
-            print(f"WARNING: {device.path} read short ({device.read} < {device.limit})", file=sys.stderr)
-    device.state = "done"
+        rng = SHISHUA(device.seed)
+        with open(device.path, "rb") as f:
+            size = f.seek(0, os.SEEK_END)
+            device.state = "reading"
+
+            buf = bytearray(blocksize)
+            device.read -= device.read % blocksize
+            if device.read < device.limit:
+                for i in range(0, device.read, blocksize):
+                    rng.fill(buf)
+
+            f.seek(device.read, os.SEEK_SET)
+            for i in range(device.read, device.limit, blocksize):
+                n = f.readinto(buf)
+                x = rng.random_raw(blocksize)
+                if buf[:n] != x[:n]:
+                    device.errors += 1
+                    logging.error(f"{device.path} verify mismatch at {i}")
+                device.read += n
+            if device.read < device.limit:
+                logging.warning(f"{device.path} read short ({device.read} < {device.limit})")
+        device.state = "done"
+    except Exception as e:
+        raise Exception(f"device error: {device.path}") from e
 
 @wrap_exc
 def refresh_loop(state: State) -> None:
@@ -133,8 +181,10 @@ def refresh_loop(state: State) -> None:
         drives_reading = sum(dev.state == "reading" for dev in devices)
         drives_writing = sum(dev.state == "writing" for dev in devices)
         drives_done = sum(dev.state == "done" for dev in devices)
+        drives_missing = sum(not dev.found for dev in devices)
+        missing_extra = f"(-{drives_missing}!)" if drives_missing else ""
         state.pbar.set_postfix({
-            "drives": f"{drives_writing}w+{drives_reading}r+{drives_done}/{len(state.devices)}",
+            "drives": f"{drives_writing}w+{drives_reading}r+{drives_done}/{len(state.devices)}" + missing_extra,
             "errors": sum(dev.errors for dev in devices),
         })
         state.pbar.refresh()
@@ -152,9 +202,6 @@ def main():
     parser.add_argument("devices", nargs="+")
     args = parser.parse_args()
 
-    devices = list(args.devices)
-    random.shuffle(devices)
-
     state = State(
         pbar=None,
         blocksize=args.blocksize,
@@ -165,10 +212,12 @@ def main():
 
     if state.save_path:
         try:
-            devset = set(devices)
+            devset = set(args.devices)
             with open(state.save_path) as f:
                 j = json.load(f)
                 state.devices = {path: Device(**d) for path, d in j["devices"].items() if path in devset}
+                for device in state.devices.values():
+                    device.found = False
         except FileNotFoundError:
             pass
 
@@ -180,7 +229,15 @@ def main():
             for _ in pool.map(device_init, args.devices, [state] * len(args.devices)):
                 pass
             pool.submit(refresh_loop, state)
-            for _ in pool.map(device_work, state.devices.values(), [state] * len(args.devices)):
+
+            devices = list(state.devices.values())
+            finished_devs = [dev for dev in devices if dev.state == "done"]
+            queued_devs = [dev for dev in devices if dev.state == "none"]
+            active_devs = [dev for dev in devices if dev.state in ("reading", "writing")]
+            random.shuffle(queued_devs)
+            devices = finished_devs + queued_devs + active_devs
+
+            for _ in pool.map(device_work, devices, [state] * len(devices)):
                 pass
 
 if __name__ == "__main__":
