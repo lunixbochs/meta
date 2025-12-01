@@ -215,7 +215,7 @@ def main():
             devset = set(args.devices)
             with open(state.save_path) as f:
                 j = json.load(f)
-                state.devices = {path: Device(**d) for path, d in j["devices"].items() if path in devset}
+                state.devices = {key: Device(**d) for key, d in j["devices"].items()}
                 for device in state.devices.values():
                     device.found = False
         except FileNotFoundError:
