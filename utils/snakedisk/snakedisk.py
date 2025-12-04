@@ -66,7 +66,8 @@ def device_init(path: str, state: State):
     try:
         with open(path, "rb") as f:
             size = f.seek(0, os.SEEK_END)
-    except OSError:
+    except OSError as e:
+        logging.error(f"device open failed: {path} {e!r}")
         return
 
     limit = size if not state.limit else min(size, state.limit)
