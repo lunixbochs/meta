@@ -40,6 +40,7 @@ class State:
     limit: int
     devices: dict[str, Device]
     save_path: Path | None
+    errors: int
 
 def wrap_exc[T](fn: Callable[T]) -> Callable[T]:
     @functools.wraps(fn)
@@ -67,7 +68,8 @@ def device_init(path: str, state: State):
         with open(path, "rb") as f:
             size = f.seek(0, os.SEEK_END)
     except OSError as e:
-        logging.error(f"device open failed: {path} {e!r}")
+        logging.error(f"device open error {path}: {e!r}")
+        state.errors += 1
         return
 
     limit = size if not state.limit else min(size, state.limit)
@@ -116,6 +118,7 @@ def device_work(device: Device, state: State) -> None:
         try:
             fd = os.open(device.path, os.O_WRONLY | os.O_DIRECT)
         except OSError as e:
+            device.errors += 1
             logging.exception(f"device error: {device.path} {e!r}")
             return
 
@@ -165,6 +168,8 @@ def device_work(device: Device, state: State) -> None:
 @wrap_exc
 def refresh_loop(state: State) -> None:
     def save():
+        if not state.save_path:
+            return
         j = {"devices": {path: asdict(d) for path, d in state.devices.items()}}
         with open(state.save_path, "w") as f:
             json.dump(j, f)
@@ -186,7 +191,7 @@ def refresh_loop(state: State) -> None:
         missing_extra = f"(-{drives_missing}!)" if drives_missing else ""
         state.pbar.set_postfix({
             "drives": f"{drives_writing}w+{drives_reading}r+{drives_done}/{len(state.devices)}" + missing_extra,
-            "errors": sum(dev.errors for dev in devices),
+            "errors": sum(dev.errors for dev in devices) + state.errors,
         })
         state.pbar.refresh()
         if drives_done == len(state.devices):
@@ -209,6 +214,7 @@ def main():
         limit=args.limit,
         devices={},
         save_path=Path(args.resume) if args.resume else None,
+        errors=0,
     )
 
     if state.save_path:
