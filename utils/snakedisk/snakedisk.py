@@ -199,11 +199,21 @@ def refresh_loop(state: State) -> None:
             break
         time.sleep(0.032)
 
+def parse_limit(limit: str) -> int:
+    suffixes = "kmgtpe"
+    limit = limit.lower()
+    for i, s in enumerate(suffixes, start=1):
+        if limit.endswith(s):
+            scale = 1024 ** i
+            limit = limit.removesuffix(s)
+            return int(limit) * scale
+    return int(limit)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=None)
     parser.add_argument("-b", "--blocksize", type=int, default=1024 * 1024)
-    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--limit", type=str, default=None)
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("devices", nargs="+")
     args = parser.parse_args()
@@ -211,7 +221,7 @@ def main():
     state = State(
         pbar=None,
         blocksize=args.blocksize,
-        limit=args.limit,
+        limit=parse_limit(args.limit),
         devices={},
         save_path=Path(args.resume) if args.resume else None,
         errors=0,
