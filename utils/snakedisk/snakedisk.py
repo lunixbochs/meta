@@ -199,7 +199,9 @@ def refresh_loop(state: State) -> None:
             break
         time.sleep(0.032)
 
-def parse_limit(limit: str) -> int:
+def parse_limit(limit: str | None) -> int | None:
+    if not limit:
+        return None
     suffixes = "kmgtpe"
     limit = limit.lower()
     for i, s in enumerate(suffixes, start=1):
