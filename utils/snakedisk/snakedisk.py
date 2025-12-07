@@ -1,7 +1,7 @@
 # requires-python = ">=3.14t"
 # dependencies = [
 #     "tqdm",
-#     "shishua",
+#     "git+https://github.com/lunixbochs/shishua-python.git",
 # ]
 
 from concurrent.futures import ThreadPoolExecutor
@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from shishua import SHISHUA
 from tqdm import tqdm
+from typing import Callable
 import argparse
 import functools
 import json
@@ -28,7 +29,7 @@ class Device:
     read: int
     wrote: int
     errors: int
-    seed: bytes
+    seed: str
     state: str # reading | writing | done
     serial: str = ""
     found: bool = False
@@ -38,11 +39,44 @@ class State:
     pbar: tqdm
     blocksize: int
     limit: int
+    seeksize: int
     devices: dict[str, Device]
     save_path: Path | None
     errors: int
 
-def wrap_exc[T](fn: Callable[T]) -> Callable[T]:
+class SeekSHUA:
+    rng: SHISHUA
+
+    def __init__(self, *, seed: str, chunksize: int, pos: int = 0):
+        self.seed = seed
+        self.chunksize = chunksize
+        self.pos = pos
+        self.reseed()
+
+    def reseed(self) -> None:
+        chunk = self.pos // self.chunksize
+        self.rng = SHISHUA(f"{self.seed}|chunk:{chunk}")
+
+        chunkoff = self.pos % self.chunksize
+        buf = bytearray(1 * 1024 * 1024)
+        for i in range(0, chunkoff, len(buf)):
+            need = min(len(buf), chunkoff - i)
+            self.rng.fill(buf[:need]) # slicing here copies, but we're throwing buf away anyway
+
+    def fill(self, buf: bytearray) -> None:
+        mbuf = memoryview(buf)
+        pos = 0
+        need = len(buf)
+        while need:
+            feed = min(need, self.chunksize - self.pos % self.chunksize)
+            self.rng.fill(mbuf[pos:pos + feed])
+            need -= feed
+            pos += feed
+            self.pos += feed
+            if self.pos % self.chunksize == 0:
+                self.reseed()
+
+def wrap_exc[T: Callable](fn: T) -> T:
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         try:
@@ -114,7 +148,6 @@ def device_work(device: Device, state: State) -> None:
     try:
         blocksize = state.blocksize
 
-        rng = SHISHUA(device.seed)
         try:
             fd = os.open(device.path, os.O_WRONLY | os.O_DIRECT)
         except OSError as e:
@@ -126,12 +159,8 @@ def device_work(device: Device, state: State) -> None:
             size = f.seek(0, os.SEEK_END)
             device.state = "writing"
 
-            device.wrote -= device.wrote % blocksize
+            rng = SeekSHUA(seed=device.seed, chunksize=state.seeksize, pos=device.wrote)
             buf = bytearray(blocksize)
-            if device.wrote < device.limit:
-                for i in range(0, device.wrote, blocksize):
-                    rng.fill(buf)
-
             f.seek(device.wrote, os.SEEK_SET)
             for i in range(device.wrote, device.limit, blocksize):
                 rng.fill(buf)
@@ -140,22 +169,18 @@ def device_work(device: Device, state: State) -> None:
             if device.wrote < device.limit:
                 logging.warning(f"{device.path} wrote short ({device.wrote} < {device.limit})")
 
-        rng = SHISHUA(device.seed)
+        rng = SeekSHUA(seed=device.seed, chunksize=state.seeksize, pos=device.read)
         with open(device.path, "rb") as f:
             size = f.seek(0, os.SEEK_END)
             device.state = "reading"
 
-            buf = bytearray(blocksize)
-            device.read -= device.read % blocksize
-            if device.read < device.limit:
-                for i in range(0, device.read, blocksize):
-                    rng.fill(buf)
-
+            fbuf = bytearray(blocksize)
+            rbuf = bytearray(blocksize)
             f.seek(device.read, os.SEEK_SET)
             for i in range(device.read, device.limit, blocksize):
-                n = f.readinto(buf)
-                x = rng.random_raw(blocksize)
-                if buf[:n] != x[:n]:
+                n = f.readinto(fbuf)
+                rng.fill(rbuf)
+                if fbuf[:n] != rbuf[:n]:
                     device.errors += 1
                     logging.error(f"{device.path} verify mismatch at {i}")
                 device.read += n
@@ -199,23 +224,28 @@ def refresh_loop(state: State) -> None:
             break
         time.sleep(0.032)
 
-def parse_limit(limit: str | None) -> int | None:
-    if not limit:
+def parse_size(spec: str | None) -> int | None:
+    if not spec:
         return None
     suffixes = "kmgtpe"
-    limit = limit.lower()
+    spec = spec.lower()
     for i, s in enumerate(suffixes, start=1):
-        if limit.endswith(s):
+        if spec.endswith(s):
             scale = 1024 ** i
-            limit = limit.removesuffix(s)
-            return int(limit) * scale
-    return int(limit)
+            spec = spec.removesuffix(s)
+            size = int(spec) * scale
+            break
+    else:
+        size = int(spec)
+    assert size > 0
+    return size
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=None)
     parser.add_argument("-b", "--blocksize", type=int, default=1024 * 1024)
     parser.add_argument("--limit", type=str, default=None)
+    parser.add_argument("--seeksize", type=str, default="25g")
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("devices", nargs="+")
     args = parser.parse_args()
@@ -223,9 +253,10 @@ def main():
     state = State(
         pbar=None,
         blocksize=args.blocksize,
-        limit=parse_limit(args.limit),
+        limit=parse_size(args.limit),
         devices={},
         save_path=Path(args.resume) if args.resume else None,
+        seeksize=parse_size(args.seeksize),
         errors=0,
     )
 
