@@ -33,16 +33,17 @@ else
     uid=$(alloc_uid)
     dscl . create "/Users/$user" UniqueID "$uid"
     dscl . create "/Users/$user" PrimaryGroupID "$gid"
-    dscl . create "/Users/$user" NFSHomeDirectory /usr/local/Cellar
+    dscl . create "/Users/$user" NFSHomeDirectory /opt/homebrew/Cellar
     dscl . create "/Users/$user" IsHidden 1
 
     echo "[+] Created User: $user (uid=$uid gid=$gid)"
 fi
 
-# populate /usr/local
-echo "[+] Creating and setting permissions on directories in /usr/local"
+# populate /opt/homebrew
+echo "[+] Creating and setting permissions on directories in /opt/homebrew"
 dirs=(bin Caskroom Cellar etc Frameworks Homebrew include lib opt sbin share var)
-cd /usr/local
+mkdir -p /opt/homebrew
+cd /opt/homebrew
 for dir in "${dirs[@]}"; do
     mkdir -p "$dir"
     chown brew:staff "$dir"
@@ -50,7 +51,7 @@ for dir in "${dirs[@]}"; do
 done
 
 # install homebrew
-echo "[+] Installing homebrew to /usr/local/Cellar"
+echo "[+] Installing homebrew to /opt/homebrew/Cellar"
 curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C Homebrew
 ln -fs ../Homebrew/bin/brew bin/brew
 chown -R "$user":"$gid" Homebrew bin/brew
@@ -67,11 +68,13 @@ cd /
 export EDITOR=vim
 export HOME=/tmp
 export HOMEBREW_NO_ANALYTICS=1
-exec sudo -E -u brew /usr/local/bin/brew "$@"
+exec sudo -E -u brew /opt/homebrew/bin/brew "$@"
 ' > /opt/sudobrew
 chown root:staff /opt/sudobrew
 chmod 555 /opt/sudobrew
 chflags schg /opt/sudobrew
+mkdir -p /opt/homebrew/sudobin
+ln -fs /opt/sudobrew /opt/local/sudobin/brew
 
 # set up visudo
 tmpdir=$(mktemp -d)
@@ -86,19 +89,23 @@ cp sudoers /etc/sudoers
 cd /
 rm -rf "$tmpdir"
 
-# set up .bash_profile
-echo "[+] Update .bash_profile"
-cd "$HOME"
-if [[ -e .bash_profile ]]; then
-    sed -i.bak -e '/brew() {/d' .bash_profile
-    remove_trailing_lines .bash_profile
-    echo >> .bash_profile
-else
-    touch .bash_profile
-    chown "$SUDO_UID:$SUDO_GID" .bash_profile
-fi
-echo 'brew() { sudo /opt/sudobrew "$@"; }' >> .bash_profile
-rm -f .bash_profile.bak
+# set up .bash_profile and .zprofile
+setup_profile() {
+    local profile="$1"
+    echo "[+] Update $profile"
+    cd "$HOME"
+    if [[ -e "$profile" ]]; then
+        sed -i '' -e '/^brew() {/d' "$profile"
+        remove_trailing_lines "$profile"
+        echo >> "$profile"
+    else
+        touch "$profile"
+        chown "$SUDO_UID:$SUDO_GID" "$profile"
+    fi
+    echo 'brew() { sudo /opt/sudobrew "$@"; }; export PATH="/opt/homebrew/sudobin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"' >> "$profile"
+}
+setup_profile .bash_profile
+setup_profile .zprofile
 
 # xcode-select --install
 # xcodebuild -license accept
