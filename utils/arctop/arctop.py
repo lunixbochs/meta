@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List
 import argparse
+import json
 import sys
 import time
 
@@ -73,7 +74,7 @@ class Stats:
         self.history = self.history[-300:]
         return snapshot
 
-    def display(self, a: Snapshot, b: Snapshot, fields: List[str]):
+    def get_rows(self, a: Snapshot, b: Snapshot, fields: List[str]) -> list[str]:
         elapsed  = diff(self.first, b)
         interval = diff(a, b)
         rows = []
@@ -113,7 +114,10 @@ class Stats:
                 unit_scale(ivalue, byte_scale=byte_scale, append=''  ),
                 unit_scale(ips,    byte_scale=byte_scale, append='/s'),
             ))
+        return rows
 
+    def display(self, a: Snapshot, b: Snapshot, fields: List[str]):
+        rows = self.get_rows(a, b, fields)
         col_pad = [len(max(col, key=lambda x: len(x))) for col in zip(*rows)]
         sys.stdout.write('\033[H')
         sys.stdout.flush()
@@ -139,10 +143,22 @@ class Stats:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', help='interval',         type=int, default=5)
+    parser.add_argument('-d', help='interval', type=int, default=5)
     parser.add_argument('-a', help='print all fields', action='store_true')
-    parser.add_argument('-f', help='fields',           type=str, default=','.join(DEFAULT_KEYS))
+    parser.add_argument('-1', '--oneshot', help='oneshot', action='store_true')
+    parser.add_argument('-f', help='fields', type=str, default=','.join(DEFAULT_KEYS))
     args = parser.parse_args()
 
     stats = Stats()
-    stats.top(interval=args.d, fields=args.f.split(',') if not args.a else ())
+    fields = args.f.split(',') if not args.a else ()
+    if args.oneshot:
+        snapshot = stats.update()
+        rows = stats.get_rows(snapshot, snapshot, fields)
+        col_pad = [len(max(col, key=lambda x: len(x))) for col in zip(*rows)]
+        for i, row in enumerate(rows):
+            print((' '.join([
+                col.rjust(pad)
+                for j, (col, pad) in enumerate(zip(row, col_pad))
+            ])))
+    else:
+        stats.top(interval=args.d, fields=fields)
