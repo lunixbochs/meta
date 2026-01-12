@@ -1,8 +1,10 @@
-# requires-python = ">=3.14t"
+# /// script
+# requires-python = ">=3.14"
 # dependencies = [
 #     "tqdm",
-#     "git+https://github.com/lunixbochs/shishua-python.git",
+#     "shishua @ git+https://github.com/lunixbochs/shishua-python.git",
 # ]
+# ///
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
