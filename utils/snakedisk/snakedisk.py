@@ -6,6 +6,12 @@
 # ]
 # ///
 
+# USAGE:
+# 1. install uv: https://docs.astral.sh/uv/
+# 2. run `lsblk` to make sure you're targeting the right disks,
+#      snakedisk WILL destroy data if you point it at an in-use disk
+# 3. PYTHON_GIL=0 uv run -p 3.14t snakedisk.py --resume resume.json disk1 [disk2...]
+
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
